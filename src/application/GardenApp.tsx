@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { mockGardenRepository } from "../data/mockGardenRepository";
@@ -7,6 +7,7 @@ import { GardenTabKey, navItems } from "../navigation/navItems";
 import { AddPlantFlowScreen } from "../features/add-plant/AddPlantFlowScreen";
 import { GardenSetupFlowScreen } from "../features/garden-setup/GardenSetupFlowScreen";
 import { KnowledgeScreen } from "../features/knowledge/KnowledgeScreen";
+import { GardenPlacement, getGardenPlacements, LocationManagementScreen } from "../features/my-garden/LocationManagementScreen";
 import { MyGardenScreen } from "../features/my-garden/MyGardenScreen";
 import { OnboardingScreen } from "../features/onboarding/OnboardingScreen";
 import { PlannerScreen } from "../features/planner/PlannerScreen";
@@ -18,12 +19,14 @@ import { TodayScreen } from "../features/today/TodayScreen";
 import { WeatherAlertsScreen } from "../features/weather/WeatherAlertsScreen";
 import { AddPlantDraft } from "../features/add-plant/types";
 import { CareTask, GardenHomeModel, PlantInstance, PlantSpecies } from "../domain";
+import { loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
 import { colors, spacing, typography } from "../theme/tokens";
 
 type OverlayScreen =
   | "onboarding"
   | "plantDetail"
   | "addPlant"
+  | "manageLocation"
   | "gardenSetup"
   | "settings"
   | "calendar"
@@ -35,21 +38,125 @@ export function GardenApp() {
   const [overlay, setOverlay] = useState<OverlayScreen>("onboarding");
   const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
   const [lastAddedPlantId, setLastAddedPlantId] = useState<string | null>(null);
+  const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
+  const [selectedReferencePlant, setSelectedReferencePlant] = useState<PlantInstance | null>(null);
+  const [selectedPlacement, setSelectedPlacement] = useState<GardenPlacement | null>(null);
+  const [initialAddPlacement, setInitialAddPlacement] = useState<GardenPlacement | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [model, setModel] = useState<GardenHomeModel>(() => mockGardenRepository.getHomeModel());
 
-  const featuredPlant = model.plantInstances.find((plant) => plant.id === lastAddedPlantId) ?? model.plantInstances[0];
+  const selectedPlant =
+    selectedReferencePlant ??
+    model.plantInstances.find((plant) => plant.id === selectedPlantId) ??
+    model.plantInstances.find((plant) => plant.id === lastAddedPlantId) ??
+    model.plantInstances[0];
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadPersistedGardenModel()
+      .then((savedModel) => {
+        if (isMounted && savedModel) {
+          setModel(savedModel);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsHydrated(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    persistGardenModel(model).catch(() => {
+      // Local persistence should never block field use.
+    });
+  }, [isHydrated, model]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!overlay) {
+        return false;
+      }
+
+      handleBack();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [overlay, selectedPlacement]);
 
   function handlePhotoSelected(photoUri: string) {
     setSelectedPhotoUri(photoUri);
   }
 
-  function handleOpenAddPlant() {
+  function handleOpenAddPlant(placement?: GardenPlacement | null) {
+    setInitialAddPlacement(placement ?? null);
     setOverlay("addPlant");
   }
 
   function handleOpenScan() {
     setOverlay(null);
     setActiveTab("scan");
+  }
+
+  function handleBack() {
+    if (overlay === "plantDetail" && selectedPlacement) {
+      setOverlay("manageLocation");
+      return;
+    }
+
+    setOverlay(null);
+    setInitialAddPlacement(null);
+    setSelectedReferencePlant(null);
+  }
+
+  function handleOpenPlant(plantId: string) {
+    setSelectedReferencePlant(null);
+    setSelectedPlantId(plantId);
+    setOverlay("plantDetail");
+  }
+
+  function handleOpenSpecies(speciesId: string) {
+    const existingPlant = model.plantInstances.find((plant) => plant.speciesId === speciesId);
+    if (existingPlant) {
+      handleOpenPlant(existingPlant.id);
+      return;
+    }
+
+    const species = model.species.find((item) => item.id === speciesId);
+    if (!species) {
+      return;
+    }
+
+    const knowledgePlant: PlantInstance = {
+      id: `knowledge-${species.id}`,
+      speciesId: species.id,
+      gardenId: model.gardens[0]?.id ?? "garden-home",
+      nickname: species.commonName,
+      locationLabel: "Knowledge reference",
+      locationType: "container",
+      source: "unknown",
+      healthStatus: "thriving",
+      notes: "Reference plant profile. Add it to a bed, container, or indoor zone to make it part of your garden."
+    };
+
+    setSelectedReferencePlant(knowledgePlant);
+    setSelectedPlantId(null);
+    setOverlay("plantDetail");
+  }
+
+  function handleOpenPlacement(placement: GardenPlacement) {
+    setSelectedPlacement(placement);
+    setOverlay("manageLocation");
   }
 
   function handleCompleteTask(taskId: string) {
@@ -115,9 +222,72 @@ export function GardenApp() {
     }));
 
     setLastAddedPlantId(plantId);
+    setSelectedPlantId(plantId);
+    setSelectedReferencePlant(null);
     setSelectedPhotoUri(null);
-    setOverlay(null);
-    setActiveTab("today");
+    setActiveTab("garden");
+
+    if (initialAddPlacement) {
+      setSelectedPlacement(initialAddPlacement);
+      setOverlay("manageLocation");
+    } else {
+      setOverlay(null);
+    }
+    setInitialAddPlacement(null);
+  }
+
+  function handleMovePlant(plantId: string, placement: GardenPlacement) {
+    setModel((current) => ({
+      ...current,
+      plantInstances: current.plantInstances.map((plant) =>
+        plant.id === plantId
+          ? {
+              ...plant,
+              gardenId: placement.gardenId,
+              bedId: placement.bedId,
+              locationLabel: placement.locationLabel,
+              locationType: placement.locationType
+            }
+          : plant
+      ),
+      tasks: current.tasks.map((task) => (task.plantInstanceId === plantId ? { ...task, gardenBedId: placement.bedId } : task))
+    }));
+    setSelectedPlacement(placement);
+  }
+
+  function handleRemovePlant(plantId: string) {
+    setModel((current) => ({
+      ...current,
+      plantInstances: current.plantInstances.filter((plant) => plant.id !== plantId),
+      tasks: current.tasks.filter((task) => task.plantInstanceId !== plantId)
+    }));
+
+    if (selectedPlantId === plantId) {
+      setSelectedPlantId(null);
+      setOverlay(selectedPlacement ? "manageLocation" : null);
+    }
+  }
+
+  function confirmRemovePlant(plant: PlantInstance) {
+    Alert.alert("Remove this plant from your garden?", plant.nickname, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Remove", style: "destructive", onPress: () => handleRemovePlant(plant.id) }
+    ]);
+  }
+
+  function openSelectedPlantLocation() {
+    if (!selectedPlant) {
+      return;
+    }
+
+    const placement =
+      getGardenPlacements(model).find((item) => item.bedId && item.bedId === selectedPlant.bedId) ??
+      getGardenPlacements(model).find((item) => item.gardenId === selectedPlant.gardenId && item.locationType === selectedPlant.locationType) ??
+      null;
+
+    if (placement) {
+      handleOpenPlacement(placement);
+    }
   }
 
   function renderMainScreen() {
@@ -126,11 +296,34 @@ export function GardenApp() {
     }
 
     if (overlay === "plantDetail") {
-      return <PlantDetailScreen plant={featuredPlant} onBack={() => setOverlay(null)} />;
+      return (
+        <PlantDetailScreen
+          plant={selectedPlant}
+          model={model}
+          onBack={handleBack}
+          onMovePlant={openSelectedPlantLocation}
+          onRemovePlant={() => confirmRemovePlant(selectedPlant)}
+          onScanPlant={handleOpenScan}
+        />
+      );
     }
 
     if (overlay === "addPlant") {
-      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={() => setOverlay(null)} />;
+      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} initialPlacement={initialAddPlacement} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={handleBack} />;
+    }
+
+    if (overlay === "manageLocation" && selectedPlacement) {
+      return (
+        <LocationManagementScreen
+          model={model}
+          placement={selectedPlacement}
+          onBack={handleBack}
+          onAddPlant={(placement) => handleOpenAddPlant(placement)}
+          onOpenPlant={handleOpenPlant}
+          onMovePlant={handleMovePlant}
+          onRemovePlant={handleRemovePlant}
+        />
+      );
     }
 
     if (overlay === "gardenSetup") {
@@ -156,7 +349,7 @@ export function GardenApp() {
           onOpenCalendar={() => setOverlay("calendar")}
           onOpenSettings={() => setOverlay("settings")}
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
-          onOpenPlant={() => setOverlay("plantDetail")}
+          onOpenPlant={handleOpenPlant}
           onOpenScan={handleOpenScan}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
@@ -165,25 +358,25 @@ export function GardenApp() {
     }
 
     if (activeTab === "scan") {
-      return <ScanScreen selectedPhotoUri={selectedPhotoUri} onPhotoSelected={handlePhotoSelected} onAddPlant={handleOpenAddPlant} />;
+      return <ScanScreen selectedPhotoUri={selectedPhotoUri} onPhotoSelected={handlePhotoSelected} onAddPlant={() => handleOpenAddPlant(null)} />;
     }
 
     if (activeTab === "garden") {
       return (
         <MyGardenScreen
           model={model}
-          onAddPlant={handleOpenAddPlant}
-          onOpenGardenSetup={() => setOverlay("gardenSetup")}
-          onOpenPlant={() => setOverlay("plantDetail")}
+          onAddPlant={() => handleOpenAddPlant(null)}
+          onOpenGardenSetup={(placement) => (placement ? handleOpenPlacement(placement) : setOverlay("gardenSetup"))}
+          onOpenPlant={handleOpenPlant}
         />
       );
     }
 
     if (activeTab === "planner") {
-      return <PlannerScreen model={model} onOpenGardenSetup={() => setOverlay("gardenSetup")} />;
+      return <PlannerScreen model={model} onOpenGardenSetup={() => setOverlay("gardenSetup")} onOpenPlacement={handleOpenPlacement} onAddPlantToPlacement={(placement) => handleOpenAddPlant(placement)} />;
     }
 
-    return <KnowledgeScreen species={model.species} onOpenPlant={() => setOverlay("plantDetail")} />;
+    return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} />;
   }
 
   return (

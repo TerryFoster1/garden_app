@@ -10,7 +10,7 @@ type TodayScreenProps = {
   onOpenCalendar: () => void;
   onOpenSettings: () => void;
   onOpenWeatherAlerts: () => void;
-  onOpenPlant: () => void;
+  onOpenPlant: (plantId: string) => void;
   onOpenScan: () => void;
   onCompleteTask: (taskId: string) => void;
   onSnoozeTask: (taskId: string) => void;
@@ -107,7 +107,7 @@ export function TodayScreen({
         const isExpanded = expandedTaskId === task.id;
         return (
           <View key={task.id} style={[styles.taskCard, task.priority === "high" || task.priority === "urgent" ? styles.taskCardUrgent : null]}>
-            <TouchableOpacity accessibilityRole="button" style={styles.taskMain} onPress={task.plantInstanceId ? onOpenPlant : () => setExpandedTaskId(isExpanded ? null : task.id)}>
+            <TouchableOpacity accessibilityRole="button" style={styles.taskMain} onPress={task.plantInstanceId ? () => onOpenPlant(task.plantInstanceId as string) : () => setExpandedTaskId(isExpanded ? null : task.id)}>
               <View style={styles.taskStatusRail}>
                 <View style={[styles.priorityDot, task.priority === "high" || task.priority === "urgent" ? styles.priorityDotHot : null]} />
               </View>

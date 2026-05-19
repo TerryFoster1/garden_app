@@ -64,3 +64,17 @@ Avoid endless equal-priority cards. Use aggressive hierarchy, progressive disclo
 ## Initial User Context
 
 The foundation mock data is centered on Kitchener/Waterloo, Ontario. It includes four 2ft x 5ft raised beds and one 5ft x 4ft perennial bed, with outdoor vegetables, herbs, flowers, perennial crops, houseplants, and succulents.
+
+## Current Live Prototype Loop
+
+The current prototype now supports the first real garden-management loop:
+
+- Scan or manually add a plant.
+- Confirm or edit the possible match.
+- Choose Indoor or Outdoor, then the exact bed/container/zone.
+- Save a PlantInstance to that location.
+- See it immediately in My Garden and Planner.
+- Tap it for useful plant detail.
+- Move it to another location or remove it from the personal garden.
+
+Plant detail information is mocked but should feel practical: water, light, feeding, soil, spacing, companions, bad companions, pests/diseases, natural controls, seed/transplant notes, pruning/harvest notes, toxicity warnings, current tasks, and recent activity.

@@ -52,3 +52,15 @@ The garden is not a list of records. My Garden should be a living map where beds
 ## My Garden Direction
 
 Replace generic lists with bed clusters, mini maps, plant status rings, environmental overlays, and selected ecosystem panels. Details should appear after the user taps into a bed or plant.
+
+## Live Management Loop
+
+The primary ownership flow is:
+
+My Garden -> Indoor or Outdoor -> bed, planter, container, or indoor zone -> manage plants inside -> plant detail.
+
+This flow must stay touch-first and fast. Plants are not dead records: tapping one should open useful care information, current tasks, recent activity, and location context. Bed and zone surfaces should allow adding, moving, and removing PlantInstances without editing generic species knowledge.
+
+## Planner Direction Now
+
+Planner is interactive even before drag/drop exists. Tapping a bed opens management, plant dots show where living items are, and spacing/sun warnings can be mocked while the future rules engine is built. The next step is true placement coordinates and drag/drop movement inside a bed.

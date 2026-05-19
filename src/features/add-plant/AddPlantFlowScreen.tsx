@@ -7,13 +7,16 @@ import { GardenCard } from "../../components/GardenCard";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { GardenHomeModel, PlantStage } from "../../domain";
+import { getKnowledgeOptions } from "../../data/plantKnowledge";
 import { MockPlantIdentificationResult, stubPlantIdentificationProvider } from "../../services";
 import { colors, spacing, typography } from "../../theme/tokens";
+import { GardenPlacement, getGardenPlacements } from "../my-garden/LocationManagementScreen";
 import { AddPlantDraft, AddPlantPlacement } from "./types";
 
 type AddPlantFlowScreenProps = {
   model: GardenHomeModel;
   selectedPhotoUri?: string | null;
+  initialPlacement?: GardenPlacement | null;
   onPhotoSelected: (photoUri: string) => void;
   onPlantAdded: (draft: AddPlantDraft) => void;
   onBack: () => void;
@@ -21,7 +24,7 @@ type AddPlantFlowScreenProps = {
 
 const stages: PlantStage[] = ["seed", "seedling", "transplant", "established", "flowering", "fruiting"];
 
-export function AddPlantFlowScreen({ model, selectedPhotoUri, onPhotoSelected, onPlantAdded, onBack }: AddPlantFlowScreenProps) {
+export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, onPhotoSelected, onPlantAdded, onBack }: AddPlantFlowScreenProps) {
   const [step, setStep] = useState<"photo" | "confirm" | "place">("photo");
   const [identification, setIdentification] = useState<MockPlantIdentificationResult | undefined>();
   const [isIdentifying, setIsIdentifying] = useState(false);
@@ -31,40 +34,10 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, onPhotoSelected, o
   const [plantedOn, setPlantedOn] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
 
-  const placements = useMemo<AddPlantPlacement[]>(() => {
-    const bedPlacements = model.beds.map((bed) => ({
-      id: bed.id,
-      gardenId: bed.gardenId,
-      bedId: bed.id,
-      label: bed.name,
-      locationLabel: bed.name,
-      locationType: bed.locationType
-    }));
+  const placements = useMemo<AddPlantPlacement[]>(() => getGardenPlacements(model), [model]);
+  const knowledgeOptions = useMemo(() => getKnowledgeOptions(), []);
 
-    const indoorZone = model.zones.find((zone) => zone.id === "zone-indoor");
-    const homeGarden = model.gardens.find((garden) => garden.id === "garden-home") ?? model.gardens[0];
-    const indoorGarden = model.gardens.find((garden) => garden.id === "garden-indoor") ?? model.gardens[0];
-
-    return [
-      ...bedPlacements,
-      {
-        id: "container-patio",
-        gardenId: homeGarden.id,
-        label: "Patio container",
-        locationLabel: "Patio container",
-        locationType: "container"
-      },
-      {
-        id: indoorZone?.id ?? "indoor-zone",
-        gardenId: indoorGarden.id,
-        label: indoorZone?.name ?? "Indoor plant zone",
-        locationLabel: indoorZone?.name ?? "Indoor plant zone",
-        locationType: "indoor-pot"
-      }
-    ];
-  }, [model.beds, model.gardens, model.zones]);
-
-  const [placementId, setPlacementId] = useState(placements[0]?.id ?? "");
+  const [placementId, setPlacementId] = useState(initialPlacement?.id ?? placements[0]?.id ?? "");
   const selectedPlacement = placements.find((placement) => placement.id === placementId) ?? placements[0];
 
   useEffect(() => {
@@ -117,6 +90,13 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, onPhotoSelected, o
     setPlantName("");
     setNotes("Added manually after skipping mock photo identification.");
     setStep("confirm");
+  }
+
+  function chooseKnownPlant(name: string) {
+    setIdentification(undefined);
+    setPlantName(name);
+    setNotes(`Added from Garden App knowledge: ${name}.`);
+    setStep("place");
   }
 
   function savePlant() {
@@ -184,6 +164,15 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, onPhotoSelected, o
           <TextInput value={plantName} onChangeText={setPlantName} placeholder="Plant name" placeholderTextColor={colors.textMuted} style={styles.input} />
           <TextInput value={variety} onChangeText={setVariety} placeholder="Variety or nickname, optional" placeholderTextColor={colors.textMuted} style={styles.input} />
 
+          <Text style={styles.sectionTitle}>Or choose from garden knowledge</Text>
+          <View style={styles.chips}>
+            {knowledgeOptions.slice(0, 16).map((option) => (
+              <TouchableOpacity key={option.commonName} accessibilityRole="button" style={styles.chip} onPress={() => chooseKnownPlant(option.commonName)}>
+                <Text style={styles.chipText}>{option.commonName}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <View style={styles.actions}>
             <PrimaryButton label="Accept" onPress={acceptIdentification} style={styles.actionButton} />
             <PrimaryButton label="Search manually" onPress={searchManually} tone="quiet" style={styles.actionButton} />
@@ -193,12 +182,12 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, onPhotoSelected, o
 
       {step === "place" ? (
         <View>
-          <Text style={styles.sectionTitle}>Select garden bed or container</Text>
+          <Text style={styles.sectionTitle}>Indoor or outdoor location</Text>
           {placements.map((placement) => (
             <TouchableOpacity key={placement.id} accessibilityRole="button" onPress={() => setPlacementId(placement.id)}>
               <GardenCard tone={placement.id === placementId ? "warm" : "surface"}>
                 <Text style={styles.cardTitle}>{placement.label}</Text>
-                <Text style={styles.cardText}>{model.gardens.find((garden) => garden.id === placement.gardenId)?.name} - {placement.locationType.replaceAll("-", " ")}</Text>
+                <Text style={styles.cardText}>{model.gardens.find((garden) => garden.id === placement.gardenId)?.name} - {placement.kind} - {placement.locationType.replaceAll("-", " ")}</Text>
               </GardenCard>
             </TouchableOpacity>
           ))}
@@ -318,4 +307,3 @@ const styles = StyleSheet.create({
     color: colors.white
   }
 });
-

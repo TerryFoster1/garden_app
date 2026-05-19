@@ -12,10 +12,11 @@ Gardening is physical, environmental, visual, seasonal, and alive. The interface
 
 1. Garden identity hero.
 2. Primary actions for adding plants and mapping beds.
-3. Zone switching: beds, pots, indoor.
+3. Zone switching: outdoor beds, pots/containers, indoor.
 4. Mini bed maps.
 5. Selected ecosystem panel.
 6. Plant clusters and status rings.
+7. Bed/zone management for add, move, remove, and plant detail.
 
 ## Bed Clusters
 
@@ -40,6 +41,18 @@ Mini maps are intentionally low fidelity at first. They should establish visual 
 
 Future versions can add true placement, drag/drop, trellises, shade cloth, spacing rings, and companion overlays.
 
+## Bed / Zone Management
+
+Tapping a bed, planter, container, or indoor zone opens a management surface. This is where the user can:
+
+- View plants in that exact space.
+- Add a plant directly to that space.
+- Move a plant to another bed/container/indoor zone.
+- Remove the personal PlantInstance with confirmation.
+- Open a useful plant detail page.
+
+This management surface is still spatial and mobile-first. It should not become a spreadsheet or inventory table.
+
 ## Garden Ownership
 
 The user should recognize their beds and plants without reading paragraphs. Use names sparingly, but lean on visual grouping, plant glyphs/photos, status rings, and environmental tinting.
@@ -57,4 +70,3 @@ The same spatial concepts should evolve into:
 - Overcrowding warnings.
 - Trellis/shade impact.
 - Seasonal growth stage transitions.
-

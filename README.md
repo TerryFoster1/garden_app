@@ -111,9 +111,12 @@ git push -u origin main
 ## Current Scope
 
 - Mobile navigation skeleton for Today, Scan, My Garden, Planner, and Knowledge.
-- Placeholder flows for onboarding, plant detail, garden setup, settings, weather alerts, task calendar, and sun/shade setup.
+- Onboarding, garden setup, settings, weather alerts, task calendar, and sun/shade setup are still early flows.
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, receive a mock identification, confirm or edit it, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
+- Live My Garden management loop: switch between outdoor beds, containers, and indoor plants; tap a bed/zone; add plants to that exact location; move plants between locations; remove only the personal plant instance; open real plant detail pages.
+- Interactive Planner foundation: tap outdoor beds, add plants to a bed, view plant markers, dimensions, sun/shade indicators, and mocked spacing warnings.
+- Local-first persistence using AsyncStorage so plant add/move/remove changes survive app reloads on the device.
 - Entitlement/subscription service foundation with paywall disabled.
 - Temporary Expo web export for preview/testing only.
 
@@ -126,7 +129,9 @@ Mocked:
 - Weather and personal weather station providers.
 - Notifications.
 - Auth, accounts, saved user data, and subscription lookups.
-- Added plants and selected photos are in-memory only until persistence is added.
+- Weather/sun/moisture status, companion checks, and spacing warnings.
+- Plant knowledge is a useful mock dataset, not a live provider.
+- Selected photos are held in app state for now.
 
 Real foundation:
 
@@ -135,14 +140,33 @@ Real foundation:
 - Service interfaces and deterministic care-rule pattern.
 - Mobile-first screen architecture.
 - Expo Image Picker camera/library permission flow.
-- In-memory plant creation that updates Today and My Garden without restarting.
+- Plant creation, movement, removal, and Today task generation through local app state.
+- AsyncStorage persistence for the mock garden model.
+- Plant detail pages powered by mock plant knowledge rather than placeholder copy.
 - Temporary static Expo web build for preview/testing.
 - Entitlement model for future free, trial, premium, admin, lifetime, and comped access.
+
+## Test The Live Garden Loop
+
+On a phone with Expo Go:
+
+1. Run `npm run start`.
+2. Scan the QR code with Expo Go.
+3. Open `My Garden`.
+4. Switch between `Beds`, `Pots`, and `Indoor`.
+5. Tap a bed or plant marker, then tap `Manage plants in this bed`.
+6. Use `Add plant here`, choose a plant, stage, and save.
+7. Tap the plant for its detail page.
+8. Use `Move` to return to its location manager, then move it to another bed/container/indoor zone.
+9. Use `Remove` and confirm that only that PlantInstance leaves the garden.
+
+Android back behavior: from a managed bed/zone, tap a plant, then use the Android back gesture/button. It should return to the bed/zone manager; another back returns to My Garden.
 
 ## Before Public Launch
 
 - Add auth with email/password and Google login.
 - Add offline-first local persistence and queued updates for field usage.
+- Replace mock AsyncStorage repository with a versioned local database/cache once the data shape stabilizes.
 - Persist user gardens, plants, photos, schedules, and observations.
 - Connect real weather and plant identification providers.
 - Add secure server-side API boundaries for paid AI/provider calls.

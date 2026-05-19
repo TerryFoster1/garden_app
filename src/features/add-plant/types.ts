@@ -5,9 +5,11 @@ export type AddPlantPlacement = {
   id: string;
   gardenId: string;
   bedId?: string;
+  zoneId?: string;
   label: string;
   locationLabel: string;
   locationType: "in-ground" | "raised-bed" | "container" | "indoor-pot" | "greenhouse";
+  kind?: "outdoor" | "indoor" | "container";
 };
 
 export type AddPlantDraft = {
@@ -20,4 +22,3 @@ export type AddPlantDraft = {
   plantedOn: string;
   notes: string;
 };
-

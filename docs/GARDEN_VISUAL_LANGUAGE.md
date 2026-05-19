@@ -35,7 +35,7 @@ Use text for decisions, not decoration.
 
 ## Plant Imagery Direction
 
-Today, placeholder initials/glyphs are acceptable. Future versions should become photo-driven:
+Today, glyphs and visual plant marks are acceptable when they help recognition. They should never lead to dead placeholder pages. Future versions should become photo-driven:
 
 - User plant photos.
 - Growth photo thumbnails.
@@ -47,3 +47,14 @@ Today, placeholder initials/glyphs are acceptable. Future versions should become
 
 Premium does not mean more UI. It means fewer, clearer surfaces that feel alive, tactile, and trustworthy.
 
+## Interaction States
+
+Visual garden elements should imply action:
+
+- Bed mini-maps open management.
+- Plant dots open plant detail.
+- Move chips relocate PlantInstances.
+- Remove actions ask for confirmation.
+- Add actions should preserve the selected bed/container/zone context.
+
+The visual language should support recognition first, then action, then deeper reading.

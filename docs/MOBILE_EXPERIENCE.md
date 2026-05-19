@@ -45,3 +45,17 @@ Primary actions should be thumb-friendly and obvious. Camera actions, task compl
 ## Spatial Mobile Surfaces
 
 Mobile garden surfaces should use compact visual maps instead of long lists. A bed preview, plant cluster, or status ring should carry more weight than repeated metadata. Tapping a visual surface should reveal details progressively.
+
+## Indoor / Outdoor Model
+
+My Garden is organized around Outdoor and Indoor ownership.
+
+Outdoor includes raised beds, perennial beds, planters, and containers. Indoor includes rooms, shelves, windows, and indoor plant groups. The user should never wonder where a plant lives: every PlantInstance carries a garden/location label and can be moved to another bed, container, or indoor zone.
+
+## Back Behavior
+
+Android hardware and gesture back should follow the user's spatial path:
+
+bed or zone manager -> plant detail -> back to bed or zone manager -> back to My Garden.
+
+At tab roots, default platform behavior can take over. Inside overlay flows, the app should intercept back so the user does not accidentally lose context while standing outdoors.

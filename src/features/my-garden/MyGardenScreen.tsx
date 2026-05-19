@@ -4,12 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { GardenBed, GardenHomeModel, PlantInstance, PlantSpecies } from "../../domain";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
+import { GardenPlacement } from "./LocationManagementScreen";
 
 type MyGardenScreenProps = {
   model: GardenHomeModel;
   onAddPlant: () => void;
-  onOpenGardenSetup: () => void;
-  onOpenPlant: () => void;
+  onOpenGardenSetup: (placement?: GardenPlacement) => void;
+  onOpenPlant: (plantId: string) => void;
 };
 
 type BedEnvironment = {
@@ -47,7 +48,7 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
             <Text style={styles.eyebrow}>My living map</Text>
             <Text style={styles.heroTitle}>Home Garden</Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Set up garden" style={styles.heroIconButton} onPress={onOpenGardenSetup}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Set up garden" style={styles.heroIconButton} onPress={() => onOpenGardenSetup()}>
             <Ionicons name="compass-outline" size={23} color={colors.white} />
           </TouchableOpacity>
         </View>
@@ -76,7 +77,7 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
           <Ionicons name="add" size={24} color={colors.leafDeep} />
           <Text style={styles.addPlantText}>Add plant</Text>
         </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" style={styles.setupAction} onPress={onOpenGardenSetup}>
+        <TouchableOpacity accessibilityRole="button" style={styles.setupAction} onPress={() => onOpenGardenSetup()}>
           <Ionicons name="map-outline" size={22} color={colors.leafDeep} />
           <Text style={styles.setupText}>Map beds</Text>
         </TouchableOpacity>
@@ -111,13 +112,40 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
                 environment={bedEnvironments[index % bedEnvironments.length]}
                 isSelected={bed.id === selectedBed?.id}
                 onPress={() => setSelectedBedId(bed.id)}
+                onManage={() =>
+                  onOpenGardenSetup({
+                    id: bed.id,
+                    label: bed.name,
+                    gardenId: bed.gardenId,
+                    bedId: bed.id,
+                    locationLabel: bed.name,
+                    locationType: bed.locationType,
+                    kind: bed.locationType === "container" ? "container" : "outdoor"
+                  })
+                }
                 onOpenPlant={onOpenPlant}
               />
             ))}
           </View>
 
           {selectedBed ? (
-            <SelectedBedPanel bed={selectedBed} plants={plantsInSelectedBed} species={model.species} onOpenPlant={onOpenPlant} />
+            <SelectedBedPanel
+              bed={selectedBed}
+              plants={plantsInSelectedBed}
+              species={model.species}
+              onOpenPlant={onOpenPlant}
+              onManage={() =>
+                onOpenGardenSetup({
+                  id: selectedBed.id,
+                  label: selectedBed.name,
+                  gardenId: selectedBed.gardenId,
+                  bedId: selectedBed.id,
+                  locationLabel: selectedBed.name,
+                  locationType: selectedBed.locationType,
+                  kind: selectedBed.locationType === "container" ? "container" : "outdoor"
+                })
+              }
+            />
           ) : null}
         </>
       ) : null}
@@ -140,6 +168,7 @@ function BedMiniMap({
   environment,
   isSelected,
   onPress,
+  onManage,
   onOpenPlant
 }: {
   bed: GardenBed;
@@ -148,7 +177,8 @@ function BedMiniMap({
   environment: BedEnvironment;
   isSelected: boolean;
   onPress: () => void;
-  onOpenPlant: () => void;
+  onManage: () => void;
+  onOpenPlant: (plantId: string) => void;
 }) {
   return (
     <TouchableOpacity accessibilityRole="button" style={[styles.bedMiniMap, styles[environment.tone], isSelected && styles.bedMiniMapSelected]} onPress={onPress}>
@@ -171,7 +201,7 @@ function BedMiniMap({
               accessibilityRole="button"
               accessibilityLabel={plant.nickname}
               style={[styles.plantDot, plant.healthStatus === "watch" && styles.plantDotWatch, { left: point.left, top: point.top }]}
-              onPress={onOpenPlant}
+              onPress={() => onOpenPlant(plant.id)}
             >
               <Text style={styles.plantDotText}>{getPlantGlyph(plantSpecies?.commonName ?? plant.nickname)}</Text>
             </TouchableOpacity>
@@ -181,7 +211,9 @@ function BedMiniMap({
 
       <View style={styles.bedMiniFooter}>
         <Text style={styles.bedMetric}>{environment.metric}</Text>
-        <Text style={styles.bedMetric}>{plants.length} plants</Text>
+        <TouchableOpacity accessibilityRole="button" onPress={onManage}>
+          <Text style={styles.bedMetric}>Manage</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -191,12 +223,14 @@ function SelectedBedPanel({
   bed,
   plants,
   species,
-  onOpenPlant
+  onOpenPlant,
+  onManage
 }: {
   bed: GardenBed;
   plants: PlantInstance[];
   species: PlantSpecies[];
-  onOpenPlant: () => void;
+  onOpenPlant: (plantId: string) => void;
+  onManage: () => void;
 }) {
   const watchPlants = plants.filter((plant) => plant.healthStatus === "watch" || plant.healthStatus === "stressed");
 
@@ -218,11 +252,16 @@ function SelectedBedPanel({
         <Signal icon="leaf-outline" label="plants" value={`${plants.length}`} />
       </View>
 
+      <TouchableOpacity accessibilityRole="button" style={styles.manageButton} onPress={onManage}>
+        <Ionicons name="construct-outline" size={18} color={colors.leafDeep} />
+        <Text style={styles.manageButtonText}>Manage plants in this bed</Text>
+      </TouchableOpacity>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.plantClusterRow}>
         {plants.map((plant) => {
           const plantSpecies = species.find((item) => item.id === plant.speciesId);
           return (
-            <TouchableOpacity key={plant.id} accessibilityRole="button" style={styles.plantCluster} onPress={onOpenPlant}>
+            <TouchableOpacity key={plant.id} accessibilityRole="button" style={styles.plantCluster} onPress={() => onOpenPlant(plant.id)}>
               <View style={[styles.statusRing, plant.healthStatus === "watch" && styles.statusRingWatch]}>
                 <Text style={styles.statusGlyph}>{getPlantGlyph(plantSpecies?.commonName ?? plant.nickname)}</Text>
               </View>
@@ -246,7 +285,7 @@ function Signal({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; 
   );
 }
 
-function PlantCarousel({ title, plants, species, onOpenPlant }: { title: string; plants: PlantInstance[]; species: PlantSpecies[]; onOpenPlant: () => void }) {
+function PlantCarousel({ title, plants, species, onOpenPlant }: { title: string; plants: PlantInstance[]; species: PlantSpecies[]; onOpenPlant: (plantId: string) => void }) {
   return (
     <View>
       <View style={styles.sectionHeader}>
@@ -257,7 +296,7 @@ function PlantCarousel({ title, plants, species, onOpenPlant }: { title: string;
         {plants.map((plant, index) => {
           const plantSpecies = species.find((item) => item.id === plant.speciesId);
           return (
-            <TouchableOpacity key={plant.id} accessibilityRole="button" style={[styles.containerTile, index % 2 === 1 && styles.containerTileAlt]} onPress={onOpenPlant}>
+            <TouchableOpacity key={plant.id} accessibilityRole="button" style={[styles.containerTile, index % 2 === 1 && styles.containerTileAlt]} onPress={() => onOpenPlant(plant.id)}>
               <View style={styles.containerGlow}>
                 <Text style={styles.containerGlyph}>{getPlantGlyph(plantSpecies?.commonName ?? plant.nickname)}</Text>
               </View>
@@ -642,6 +681,20 @@ const styles = StyleSheet.create({
   signalValue: {
     color: colors.text,
     fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  manageButton: {
+    minHeight: 48,
+    borderRadius: radii.pill,
+    backgroundColor: colors.sun,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  manageButtonText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
     fontWeight: "900"
   },
   plantClusterRow: {

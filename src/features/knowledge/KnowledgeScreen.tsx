@@ -7,7 +7,7 @@ import { colors, spacing, typography } from "../../theme/tokens";
 
 type KnowledgeScreenProps = {
   species: PlantSpecies[];
-  onOpenPlant: () => void;
+  onOpenPlant: (speciesId: string) => void;
 };
 
 export function KnowledgeScreen({ species, onOpenPlant }: KnowledgeScreenProps) {
@@ -22,7 +22,7 @@ export function KnowledgeScreen({ species, onOpenPlant }: KnowledgeScreenProps) 
       <TextInput placeholder="Search tomato, basil, mildew, aphids..." placeholderTextColor={colors.textMuted} style={styles.search} />
 
       {species.map((item) => (
-        <TouchableOpacity key={item.id} accessibilityRole="button" onPress={onOpenPlant}>
+        <TouchableOpacity key={item.id} accessibilityRole="button" onPress={() => onOpenPlant(item.id)}>
           <GardenCard>
             <Text style={styles.cardTitle}>{item.commonName}</Text>
             <Text style={styles.cardText}>{item.careSummary}</Text>
@@ -63,4 +63,3 @@ const styles = StyleSheet.create({
     textTransform: "uppercase"
   }
 });
-

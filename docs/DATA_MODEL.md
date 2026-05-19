@@ -52,11 +52,24 @@ Queued local mutations should support field use in poor signal:
 
 - Complete task.
 - Add plant.
+- Move a PlantInstance between beds, containers, and indoor zones.
+- Remove a PlantInstance from the user's garden without deleting PlantSpecies knowledge.
 - Add photo.
 - Add observation.
 - Update care task.
 
 The server database can become the durable source of truth later, but the phone should remain useful outdoors when network access is unreliable.
+
+## Current Prototype Persistence
+
+The prototype persists the full mock `GardenHomeModel` in AsyncStorage. This is intentionally simple and replaceable. It gives the app a local-first feel while avoiding premature auth, Postgres, or sync infrastructure.
+
+When a plant is added, moved, or removed:
+
+- `PlantSpecies` remains generic knowledge.
+- `PlantInstance` changes location or leaves the user's garden.
+- Tasks tied to a removed PlantInstance are removed.
+- Today, My Garden, Planner, and Plant Detail read from the same local model.
 
 ## Subscription Readiness
 
