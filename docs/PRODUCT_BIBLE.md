@@ -8,6 +8,8 @@ It is not only a watering reminder app. The long-term product combines plant ide
 
 This is a mobile-only product for iPhone and Android. Web support is allowed only as temporary testing/preview convenience.
 
+The app's core question is: what matters right now in my garden?
+
 ## Core User Jobs
 
 - Identify a plant, pest, disease, mold, weed, or stress signal from a photo.
@@ -24,6 +26,8 @@ This is a mobile-only product for iPhone and Android. Web support is allowed onl
 
 - Camera first: scanning should be one tap away.
 - Today first: the daily task list should be useful before the user opens deeper screens.
+- Action first: prioritize what the user should do, not the full database of garden facts.
+- Visual first: garden beds, plant status, weather, and alerts should be understood at a glance.
 - Personalized over generic: model "Cherry tomatoes in Bed 2," not only "Tomato."
 - Weather-aware by default: care should react to rain, frost, wind, humidity, heat, and UV.
 - AI recommends, rules validate, user confirms when risk is meaningful.
@@ -51,6 +55,8 @@ This is a mobile-only product for iPhone and Android. Web support is allowed onl
 ## UX Constraints
 
 Prioritize portrait orientation, bottom navigation, touch targets, large buttons/cards, quick scan flows, and one-handed use. Avoid desktop admin aesthetics, dense tables, tiny controls, excessive menus, and keyboard-heavy workflows.
+
+Avoid endless equal-priority cards. Use aggressive hierarchy, progressive disclosure, and large interactive surfaces.
 
 ## Initial User Context
 

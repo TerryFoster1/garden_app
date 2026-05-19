@@ -6,6 +6,8 @@ Warm, intelligent, practical, modern, and nature-connected. The app should feel 
 
 The brand is for a mobile-only garden tool used outdoors, often one-handed, sometimes in bright sunlight or poor signal. It should feel practical before it feels decorative.
 
+The emotional reference is closer to Apple Weather plus a smart garden coach than Airtable, Notion, or a SaaS dashboard.
+
 ## Visual Direction
 
 - Clean warm background.
@@ -21,6 +23,9 @@ The brand is for a mobile-only garden tool used outdoors, often one-handed, some
 - High contrast task cards for outdoor readability.
 - Bottom navigation and prominent scan actions.
 - Minimal typing in field workflows.
+- Immersive weather-aware headers.
+- Visual bed/status indicators.
+- Recent activity moments that make the garden feel alive.
 
 ## Token Map
 
@@ -46,3 +51,11 @@ Use plain garden language. Avoid dense agronomy jargon unless the user opens dee
 - No tiny icon-only controls without clear affordance.
 - No desktop-first cards compressed onto mobile.
 - Scan, Today, and task completion should always feel close at hand.
+
+## Hierarchy Rules
+
+- One dominant answer per screen.
+- One or two primary actions per screen.
+- Details should be revealed only when useful.
+- Avoid walls of explanatory copy.
+- Use visual state for moisture, heat, shade, urgency, and plant condition.

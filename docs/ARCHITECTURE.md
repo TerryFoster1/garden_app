@@ -73,6 +73,18 @@ The most-used interactions should remain:
 
 Screens should be portrait-first, touch-first, readable outdoors, and usable one-handed. Navigation should remain bottom navigation with prominent scan access.
 
+## Experience Architecture
+
+The technical architecture can stay modular, but the screen architecture should avoid data-dump surfaces. Feature screens should expose:
+
+- A current-context summary.
+- A primary action.
+- Important tasks or alerts.
+- Visual status.
+- Progressive details.
+
+Today is the status center. Scan is the identity-defining action. My Garden should become visual and spatial. Planner should become tactile and strategic. Knowledge should remain contextual and secondary.
+
 ## Offline + Field Usage
 
 Users may be outside, in greenhouses, or in poor signal areas. Future persistence should be local-first:

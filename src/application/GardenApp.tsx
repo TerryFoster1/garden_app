@@ -47,6 +47,26 @@ export function GardenApp() {
     setOverlay("addPlant");
   }
 
+  function handleOpenScan() {
+    setOverlay(null);
+    setActiveTab("scan");
+  }
+
+  function handleCompleteTask(taskId: string) {
+    setModel((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, status: "done" } : task))
+    }));
+  }
+
+  function handleSnoozeTask(taskId: string) {
+    const laterToday = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+    setModel((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, dueAt: laterToday, priority: task.priority === "urgent" ? "high" : task.priority } : task))
+    }));
+  }
+
   function handlePlantAdded(draft: AddPlantDraft) {
     const now = Date.now();
     const normalizedName = draft.plantName.toLowerCase();
@@ -137,6 +157,9 @@ export function GardenApp() {
           onOpenSettings={() => setOverlay("settings")}
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
           onOpenPlant={() => setOverlay("plantDetail")}
+          onOpenScan={handleOpenScan}
+          onCompleteTask={handleCompleteTask}
+          onSnoozeTask={handleSnoozeTask}
         />
       );
     }
@@ -177,7 +200,7 @@ export function GardenApp() {
                 key={item.key}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
-                style={[styles.navItem, isScan && styles.scanNavItem, isActive && styles.activeNavItem]}
+                style={[styles.navItem, isActive && styles.activeNavItem, isScan && styles.scanNavItem]}
                 onPress={() => setActiveTab(item.key)}
               >
                 <Ionicons name={item.icon} size={isScan ? 30 : 22} color={isActive || isScan ? colors.leafDeep : colors.textMuted} />
@@ -264,18 +287,18 @@ const styles = StyleSheet.create({
   },
   navBar: {
     position: "absolute",
-    left: spacing.md,
-    right: spacing.md,
+    left: spacing.sm,
+    right: spacing.sm,
     bottom: spacing.md,
-    minHeight: 78,
-    borderRadius: 28,
+    minHeight: 84,
+    borderRadius: 32,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     shadowColor: colors.shadow,
     shadowOpacity: 0.12,
     shadowRadius: 18,
@@ -287,17 +310,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    minHeight: 58
+    minHeight: 62,
+    borderRadius: 24
   },
   scanNavItem: {
-    transform: [{ translateY: -10 }],
+    transform: [{ translateY: -14 }],
     backgroundColor: colors.sun,
-    borderRadius: 26,
-    minHeight: 68,
-    maxWidth: 76
+    borderRadius: 32,
+    minHeight: 76,
+    maxWidth: 82,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6
   },
   activeNavItem: {
-    opacity: 1
+    backgroundColor: colors.surfaceWarm
   },
   navLabel: {
     fontSize: typography.caption,
