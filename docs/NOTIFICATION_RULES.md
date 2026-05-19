@@ -19,6 +19,7 @@ Flow:
 - Alert for frost protection.
 - Alert for wind protection.
 - Warn before heavy rain.
+- Avoid fertilizing before heavy rain.
 - Warn for humidity and mildew risk.
 - Remind for pruning.
 - Remind for fertilizing.
@@ -36,3 +37,14 @@ Avoid: "Critical intervention required."
 
 Notifications should be brief, contextual, and easy to act on from a phone.
 
+## Mobile Notification Model
+
+The most common entry point should be a phone notification that opens the user into a fast task flow:
+
+1. Open notification.
+2. See the task in Today.
+3. Mark complete, skip, snooze, or scan the plant/problem.
+4. Queue the action locally if offline.
+5. Sync later when the device is online.
+
+Notifications should be designed for outdoor use: short titles, clear action verbs, and no dense explanation.

@@ -4,6 +4,8 @@
 
 Warm, intelligent, practical, modern, and nature-connected. The app should feel like a calm garden assistant, not a spreadsheet and not generic corporate SaaS.
 
+The brand is for a mobile-only garden tool used outdoors, often one-handed, sometimes in bright sunlight or poor signal. It should feel practical before it feels decorative.
+
 ## Visual Direction
 
 - Clean warm background.
@@ -15,6 +17,10 @@ Warm, intelligent, practical, modern, and nature-connected. The app should feel 
 - Prominent camera action.
 - Daily task cards that feel actionable rather than noisy.
 - Notifications that are calm, short, and useful.
+- Large touch targets for phone use.
+- High contrast task cards for outdoor readability.
+- Bottom navigation and prominent scan actions.
+- Minimal typing in field workflows.
 
 ## Token Map
 
@@ -31,3 +37,12 @@ Warm, intelligent, practical, modern, and nature-connected. The app should feel 
 
 Use plain garden language. Avoid dense agronomy jargon unless the user opens deeper knowledge content. Prefer "Protect peppers from cold tonight" over "Frost-risk intervention recommended."
 
+## Mobile Constraints
+
+- Portrait-first layouts.
+- Thumb-friendly bottom actions.
+- No sidebar/admin dashboard patterns.
+- No dense tables.
+- No tiny icon-only controls without clear affordance.
+- No desktop-first cards compressed onto mobile.
+- Scan, Today, and task completion should always feel close at hand.

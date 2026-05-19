@@ -37,3 +37,27 @@ Example:
 
 Use stable IDs and relational foreign keys. Keep provider payloads as supplemental metadata instead of letting external provider shape become the app's core schema.
 
+## Mobile Local-First Direction
+
+The mobile app should eventually keep a local cache of:
+
+- Gardens, zones, beds, containers, and obstructions.
+- Plant species and user plant instances.
+- Care tasks and completion status.
+- Recent weather snapshots and alerts.
+- Plant photos and growth logs.
+- User observations.
+
+Queued local mutations should support field use in poor signal:
+
+- Complete task.
+- Add plant.
+- Add photo.
+- Add observation.
+- Update care task.
+
+The server database can become the durable source of truth later, but the phone should remain useful outdoors when network access is unreliable.
+
+## Subscription Readiness
+
+The data model should later support account states: `free`, `trial`, `premium`, `admin`, `lifetime`, and `comped`. Admin, lifetime, and comped accounts bypass future payment checks. Paywall enforcement is disabled during the personal-use prototype phase.

@@ -66,6 +66,12 @@ Production should move through Expo/EAS mobile builds:
 - GPS/location and compass/orientation workflows.
 - Offline-first task completion and queued updates where possible.
 
+## Product Phases
+
+V1 is a personal-use Expo mobile prototype tested through Expo Go and development builds. It should prove the phone-first garden loop: notification, Today, task completion, scan, add plant, weather/garden alert, and knowledge search.
+
+V2 is the native iOS and Android release through Expo/EAS, App Store, and Google Play. That phase should add production auth, persistent database, real push notifications, weather API, plant ID API, AI diagnostics, offline sync, and future subscriptions.
+
 ## Environment Variables
 
 Copy `.env.example` when creating local, EAS, or temporary preview environment values. Do not commit real secrets.
@@ -82,6 +88,25 @@ Required placeholders:
 - `EXPO_PUBLIC_ENABLE_PAYWALL=false`
 - `EXPO_PUBLIC_ADMIN_EMAILS=`
 - `EXPO_PUBLIC_SUBSCRIPTION_PROVIDER=stripe`
+
+## GitHub Setup
+
+Git is initialized locally on `main`. No GitHub remote is configured yet.
+
+Recommended repo name: `garden-app`.
+
+To create and push with GitHub CLI:
+
+```bash
+gh repo create garden-app --private --source=. --remote=origin --push
+```
+
+Or create an empty GitHub repo named `garden-app`, then run:
+
+```bash
+git remote add origin https://github.com/<your-username>/garden-app.git
+git push -u origin main
+```
 
 ## Current Scope
 
@@ -125,3 +150,12 @@ Real foundation:
 - Add admin email configuration and account management.
 - Add privacy, data export/delete, and photo retention controls.
 - Add EAS build configuration for iOS and Android.
+
+## EAS Mobile Builds
+
+`eas.json` is included as a starting point for future development, preview, and production mobile builds. Use this later after installing/logging into EAS CLI and confirming app identifiers:
+
+```bash
+eas build --profile development --platform ios
+eas build --profile development --platform android
+```
