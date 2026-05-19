@@ -42,3 +42,6 @@ Today is the operational hub. Scan is the identity-defining action. My Garden is
 
 Primary actions should be thumb-friendly and obvious. Camera actions, task completion, and alert acknowledgement should be usable without precision tapping.
 
+## Spatial Mobile Surfaces
+
+Mobile garden surfaces should use compact visual maps instead of long lists. A bed preview, plant cluster, or status ring should carry more weight than repeated metadata. Tapping a visual surface should reveal details progressively.

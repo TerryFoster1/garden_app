@@ -39,3 +39,17 @@ Task explanations should use practical language:
 
 Future task cards should support swipe complete, snooze, and skip. Until gesture handling is added, large touch actions are preferred over tiny controls.
 
+## Touch Everything Important
+
+Important garden surfaces should feel interactive:
+
+- Tap a bed to focus it.
+- Tap a plant cluster to open plant detail.
+- Tap a zone to shift context.
+- Tap environmental state to understand why it matters.
+
+Avoid static informational dead zones.
+
+## Spatial Before Text
+
+When a user can understand something visually, do not explain it first. Use text after the visual state establishes context.

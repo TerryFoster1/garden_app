@@ -10,6 +10,8 @@ This is a mobile-only product for iPhone and Android. Web support is allowed onl
 
 The app's core question is: what matters right now in my garden?
 
+The My Garden experience should make the product identity tangible: a living, visual map of the user's own beds, containers, indoor plants, and microclimates.
+
 ## Core User Jobs
 
 - Identify a plant, pest, disease, mold, weed, or stress signal from a photo.
@@ -28,6 +30,7 @@ The app's core question is: what matters right now in my garden?
 - Today first: the daily task list should be useful before the user opens deeper screens.
 - Action first: prioritize what the user should do, not the full database of garden facts.
 - Visual first: garden beds, plant status, weather, and alerts should be understood at a glance.
+- Spatial first: plants belong somewhere, and the interface should show that relationship.
 - Personalized over generic: model "Cherry tomatoes in Bed 2," not only "Tomato."
 - Weather-aware by default: care should react to rain, frost, wind, humidity, heat, and UV.
 - AI recommends, rules validate, user confirms when risk is meaningful.

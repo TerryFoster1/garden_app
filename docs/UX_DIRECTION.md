@@ -45,3 +45,10 @@ Show the reason only when it helps the user decide. Use short "Why" affordances,
 
 The app can feel environmental without becoming decorative. Use weather state, light, moisture, plant health, urgency, and seasonal context as the visual system.
 
+## Spatial Ownership
+
+The garden is not a list of records. My Garden should be a living map where beds, pots, indoor zones, and plant clusters are recognized visually. The user should understand where plants are and what needs attention before reading details.
+
+## My Garden Direction
+
+Replace generic lists with bed clusters, mini maps, plant status rings, environmental overlays, and selected ecosystem panels. Details should appear after the user taps into a bed or plant.
