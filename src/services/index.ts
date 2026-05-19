@@ -8,3 +8,4 @@ export * from "./weather/weatherProvider";
 export * from "./entitlements/entitlementService";
 export * from "./entitlements/mockSubscriptionProvider";
 export * from "./entitlements/subscriptionProvider";
+export * from "./offline/offlineQueueService";

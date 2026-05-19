@@ -9,11 +9,12 @@
 - Provider interfaces for weather, plant ID, AI, notifications, personal stations.
 - Care rules and sun/weather engine stubs.
 - First Scan/Add Plant vertical slice: camera/library picker, mock identification, confidence language, confirmation/editing, bed/container selection, local plant creation, and starter tasks visible in Today/My Garden.
-- Vercel-ready Expo web export with entitlement/subscription service foundation and paywall disabled.
+- Temporary Expo web preview export with entitlement/subscription service foundation and paywall disabled.
 
 ## Phase 2: Real Device Loops
 
 - Persist selected photos and plant instances beyond the current app session.
+- Add local-first task completion and queued updates for poor-signal field usage.
 - Location permission and saved garden location.
 - Compass/orientation capture.
 - Local notification permission and test reminders.
@@ -27,6 +28,7 @@
 - Deterministic care schedule generation.
 - Task completion, skip reasons, and observation history.
 - Weather-aware watering and protection tasks.
+- Offline cache for garden data, schedules, observations, and recent weather snapshots.
 
 ## Phase 4: Provider Integrations
 
@@ -47,9 +49,18 @@
 
 ## Deployment + Monetization Readiness
 
-- Deploy browser access to Vercel now using Expo web static export.
-- Build mobile apps later with Expo/EAS after core flows stabilize.
+- Use Expo web/Vercel only for temporary preview/testing.
+- Build production mobile apps with Expo/EAS for iOS App Store and Google Play Store.
 - Keep paywall disabled during the personal-use phase.
 - Preserve an affordable future subscription model without blocking current use.
 - Support admin, lifetime, and comped bypass states before any payment enforcement.
 - Use Stripe as the likely future provider, but do not implement payments until auth and persistence are ready.
+
+## Mobile-Only Product Direction
+
+- Do not optimize for desktop layouts.
+- Do not create sidebar admin dashboards or dense tables.
+- Prioritize notifications, task completion, scan flows, Today, and weather/garden alerts.
+- Keep controls large, touch-friendly, portrait-first, and readable outdoors.
+- Minimize typing in garden workflows.
+- Prefer offline-first local interactions with queued sync when possible.

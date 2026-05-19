@@ -4,7 +4,7 @@ Garden App is a mobile-first foundation for a personalized garden operating syst
 
 ## Framework
 
-This scaffold uses React Native with Expo and TypeScript because the core product depends on phone-native capabilities: camera, photo library, push notifications, GPS, compass/orientation, and mobile task flows. The browser deployment uses Expo web exported as a static site for Vercel.
+This scaffold uses React Native with Expo and TypeScript because the product is mobile-only. The real production targets are iPhone and Android. Expo web can exist temporarily for preview/testing convenience, but the app should not be designed, optimized, or architected as a desktop web product.
 
 ## Run Locally
 
@@ -20,7 +20,7 @@ Run Expo for mobile/simulator development:
 npm run start
 ```
 
-Run Expo web locally:
+Run Expo web locally for temporary preview/testing only:
 
 ```bash
 npm run web
@@ -32,17 +32,19 @@ Type-check:
 npm run check
 ```
 
-Build the web export:
+Build the temporary web preview export:
 
 ```bash
 npm run build:web
 ```
 
-The web build outputs to `dist/`.
+The web build outputs to `dist/`. This is not the production platform strategy.
 
-## Deploy To Vercel
+## Temporary Vercel Preview
 
-Recommended Vercel settings:
+Vercel may be used for browser preview/testing while the app is early. Do not treat Vercel as the long-term production target.
+
+Recommended preview settings:
 
 - Framework preset: Other
 - Install command: `npm install`
@@ -50,11 +52,23 @@ Recommended Vercel settings:
 - Output directory: `dist`
 - Root directory: project root
 
-`vercel.json` already sets the build command, output directory, and SPA fallback rewrite.
+`vercel.json` sets the build command, output directory, and SPA fallback rewrite for preview convenience only.
+
+## Production Target
+
+Production should move through Expo/EAS mobile builds:
+
+- iOS App Store.
+- Google Play Store.
+- Portrait-first phone layouts.
+- Push notifications.
+- Camera-first scan flows.
+- GPS/location and compass/orientation workflows.
+- Offline-first task completion and queued updates where possible.
 
 ## Environment Variables
 
-Copy `.env.example` when creating local or Vercel environment values. Do not commit real secrets.
+Copy `.env.example` when creating local, EAS, or temporary preview environment values. Do not commit real secrets.
 
 Required placeholders:
 
@@ -76,7 +90,7 @@ Required placeholders:
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, receive a mock identification, confirm or edit it, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
 - Entitlement/subscription service foundation with paywall disabled.
-- Vercel-ready Expo web static export.
+- Temporary Expo web export for preview/testing only.
 
 ## Mocked vs Real
 
@@ -97,16 +111,17 @@ Real foundation:
 - Mobile-first screen architecture.
 - Expo Image Picker camera/library permission flow.
 - In-memory plant creation that updates Today and My Garden without restarting.
-- Static Expo web build for Vercel.
+- Temporary static Expo web build for preview/testing.
 - Entitlement model for future free, trial, premium, admin, lifetime, and comped access.
 
 ## Before Public Launch
 
 - Add auth with email/password and Google login.
+- Add offline-first local persistence and queued updates for field usage.
 - Persist user gardens, plants, photos, schedules, and observations.
 - Connect real weather and plant identification providers.
 - Add secure server-side API boundaries for paid AI/provider calls.
 - Implement subscription lookup, likely Stripe, without exposing secrets in the client.
 - Add admin email configuration and account management.
 - Add privacy, data export/delete, and photo retention controls.
-
+- Add EAS build configuration for iOS and Android.
