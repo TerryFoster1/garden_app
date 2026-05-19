@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Garden App",
+    "slug": "garden-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "gardenapp",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gardenapp.mobile"
+    },
+    "android": {
+      "package": "com.gardenapp.mobile"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Garden App uses your photos to help identify plants and save growth observations.",
+          "cameraPermission": "Garden App uses the camera so you can scan plants, pests, weeds, and garden changes."
+        }
+      ]
+    ]
+  }
+}
