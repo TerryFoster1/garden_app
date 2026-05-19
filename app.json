@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "scheme": "gardenapp",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gardenapp.mobile"
@@ -21,7 +23,8 @@
           "photosPermission": "Garden App uses your photos to help identify plants and save growth observations.",
           "cameraPermission": "Garden App uses the camera so you can scan plants, pests, weeds, and garden changes."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
