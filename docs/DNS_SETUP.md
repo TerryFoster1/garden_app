@@ -8,6 +8,8 @@ Do not change DNS until the Vercel project exists and the GitHub deployment is w
 
 - Root domain: `pattypan.ca`
 - WWW domain: `www.pattypan.ca`
+- Vercel project alias status: both `pattypan.ca` and `www.pattypan.ca` have been assigned to the Pattypan Vercel project.
+- Current nameservers from Vercel CLI inspection: GoDaddy nameservers `ns07.domaincontrol.com` and `ns08.domaincontrol.com`.
 
 ## Recommended Setup
 
@@ -30,6 +32,19 @@ In GoDaddy:
 5. Add or update the `www` record exactly as Vercel provides.
 
 Typical Vercel DNS patterns are an `A` record for the root domain and a `CNAME` record for `www`, but use the exact values shown in Vercel for this project.
+
+## Current GoDaddy Records To Check
+
+Vercel CLI confirmed the domain exists and the aliases were created, but it did not return project-specific dynamic DNS targets. In the Vercel dashboard, open Project Settings -> Domains for Pattypan and use the recommended records shown there.
+
+If the dashboard shows the standard Vercel records, GoDaddy should have:
+
+| Type | Name | Value | Notes |
+| --- | --- | --- | --- |
+| A | `@` | `76.76.21.21` or the Vercel-recommended apex IP shown in Project Settings | Root domain `pattypan.ca` |
+| CNAME | `www` | `cname.vercel-dns.com` or the Vercel-recommended CNAME shown in Project Settings | `www.pattypan.ca` |
+
+Remove conflicting parked-domain, forwarding, or duplicate A/CNAME records for `@` and `www`.
 
 ## SSL
 
