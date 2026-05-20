@@ -58,3 +58,7 @@ Visual garden elements should imply action:
 - Add actions should preserve the selected bed/container/zone context.
 
 The visual language should support recognition first, then action, then deeper reading.
+
+## Planner Visuals
+
+Planner visuals should show plant spacing and warning zones. A tomato should visually require more space than basil. Overlap and crowding should feel visible before the user reads a warning.

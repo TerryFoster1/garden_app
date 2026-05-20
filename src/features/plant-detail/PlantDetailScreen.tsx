@@ -1,10 +1,12 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { CareTask, GardenBed, GardenHomeModel, PlantInstance, PlantSpecies } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
+import { getDaysUntilHarvest, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type PlantDetailScreenProps = {
@@ -14,14 +16,35 @@ type PlantDetailScreenProps = {
   onMovePlant: () => void;
   onRemovePlant: () => void;
   onScanPlant: () => void;
+  onRenamePlant: (plantId: string, displayName: string) => void;
+  onMarkWatered: (plantId: string) => void;
+  onHarvestPlant: (plantId: string) => void;
 };
 
-export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant }: PlantDetailScreenProps) {
+export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant, onRenamePlant, onMarkWatered, onHarvestPlant }: PlantDetailScreenProps) {
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [displayName, setDisplayName] = useState(plant.nickname);
   const species = model.species.find((item) => item.id === plant.speciesId);
   const bed = plant.bedId ? model.beds.find((item) => item.id === plant.bedId) : undefined;
   const tasks = model.tasks.filter((task) => task.plantInstanceId === plant.id && task.status !== "done");
   const knowledge = getPlantKnowledge(species, plant.nickname);
   const isReferencePlant = plant.id.startsWith("knowledge-");
+  const metrics = getPlantPlanMetrics(species, plant.nickname);
+  const daysUntilHarvest = getDaysUntilHarvest(plant, species);
+
+  useEffect(() => {
+    setDisplayName(plant.nickname);
+    setIsRenaming(false);
+  }, [plant.id, plant.nickname]);
+
+  function saveDisplayName() {
+    if (!displayName.trim()) {
+      return;
+    }
+
+    onRenamePlant(plant.id, displayName.trim());
+    setIsRenaming(false);
+  }
 
   return (
     <View style={styles.screen}>
@@ -46,12 +69,32 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
         {!isReferencePlant ? <PrimaryButton label="Remove" onPress={onRemovePlant} tone="quiet" icon={<Ionicons name="trash-outline" size={19} color={colors.leafDeep} />} style={styles.actionButton} /> : null}
       </View>
 
+      {!isReferencePlant ? (
+        <View style={styles.actionRow}>
+          <PrimaryButton label="Watered" onPress={() => onMarkWatered(plant.id)} tone="quiet" icon={<Ionicons name="water-outline" size={19} color={colors.leafDeep} />} style={styles.actionButton} />
+          {metrics.edible ? <PrimaryButton label="Harvest" onPress={() => onHarvestPlant(plant.id)} tone="quiet" icon={<Ionicons name="basket-outline" size={19} color={colors.leafDeep} />} style={styles.actionButton} /> : null}
+          <PrimaryButton label={isRenaming ? "Save name" : "Rename"} onPress={isRenaming ? saveDisplayName : () => setIsRenaming(true)} tone="quiet" icon={<Ionicons name="create-outline" size={19} color={colors.leafDeep} />} style={styles.actionButton} />
+        </View>
+      ) : null}
+
+      {isRenaming ? <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" placeholderTextColor={colors.textMuted} style={styles.nameInput} /> : null}
+
       <View style={styles.quickGrid}>
         <Fact icon="sunny-outline" label="Light" value={knowledge.lightNeeds} />
         <Fact icon="water-outline" label="Water" value={knowledge.watering} />
         <Fact icon="nutrition-outline" label="Feed" value={knowledge.feeding} />
         <Fact icon="layers-outline" label="Soil" value={knowledge.soil} />
       </View>
+
+      {metrics.edible ? (
+        <View style={styles.harvestPanel}>
+          <View>
+            <Text style={styles.harvestLabel}>Harvest</Text>
+            <Text style={styles.harvestTitle}>{daysUntilHarvest !== undefined ? `${daysUntilHarvest} days` : "Timing unknown"}</Text>
+          </View>
+          <Text style={styles.harvestText}>{metrics.harvestWindow ?? knowledge.pruningHarvestNotes ?? "Harvest timing will improve with photo updates."}</Text>
+        </View>
+      ) : null}
 
       {knowledge.spacing ? (
         <Section title="Spacing" items={[knowledge.spacing]} />
@@ -64,6 +107,7 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
 
       {knowledge.seedTransplantNotes ? <InfoBlock title="Seed + Transplant" text={knowledge.seedTransplantNotes} /> : null}
       {knowledge.pruningHarvestNotes ? <InfoBlock title="Pruning + Harvest" text={knowledge.pruningHarvestNotes} /> : null}
+      <InfoBlock title="Propagation" text={knowledge.seedTransplantNotes ?? "Propagation guidance will come from species knowledge and future photo observations."} />
       {knowledge.toxicity ? <InfoBlock title="Toxicity" text={knowledge.toxicity} tone="warning" /> : null}
 
       <View style={styles.sectionHeader}>
@@ -193,10 +237,44 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.sm
   },
+  nameInput: {
+    minHeight: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: "800"
+  },
   quickGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
+  },
+  harvestPanel: {
+    borderRadius: 26,
+    backgroundColor: colors.sun,
+    padding: spacing.lg,
+    gap: spacing.sm
+  },
+  harvestLabel: {
+    color: colors.soil,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  harvestTitle: {
+    color: colors.leafDeep,
+    fontSize: typography.title,
+    fontWeight: "900"
+  },
+  harvestText: {
+    color: colors.soil,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 20
   },
   fact: {
     width: "48%",

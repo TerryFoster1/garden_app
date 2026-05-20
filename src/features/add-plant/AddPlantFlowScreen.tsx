@@ -17,14 +17,16 @@ type AddPlantFlowScreenProps = {
   model: GardenHomeModel;
   selectedPhotoUri?: string | null;
   initialPlacement?: GardenPlacement | null;
+  backSignal?: number;
   onPhotoSelected: (photoUri: string) => void;
   onPlantAdded: (draft: AddPlantDraft) => void;
   onBack: () => void;
+  onExit?: () => void;
 };
 
 const stages: PlantStage[] = ["seed", "seedling", "transplant", "established", "flowering", "fruiting"];
 
-export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, onPhotoSelected, onPlantAdded, onBack }: AddPlantFlowScreenProps) {
+export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, backSignal = 0, onPhotoSelected, onPlantAdded, onBack, onExit }: AddPlantFlowScreenProps) {
   const [step, setStep] = useState<"photo" | "confirm" | "place">("photo");
   const [identification, setIdentification] = useState<MockPlantIdentificationResult | undefined>();
   const [isIdentifying, setIsIdentifying] = useState(false);
@@ -39,6 +41,13 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
 
   const [placementId, setPlacementId] = useState(initialPlacement?.id ?? placements[0]?.id ?? "");
   const selectedPlacement = placements.find((placement) => placement.id === placementId) ?? placements[0];
+
+  useEffect(() => {
+    if (backSignal === 0) {
+      return;
+    }
+    stepBack();
+  }, [backSignal]);
 
   useEffect(() => {
     if (!selectedPhotoUri || identification || isIdentifying) {
@@ -116,9 +125,25 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
     });
   }
 
+  function stepBack() {
+    if (step === "place") {
+      setStep("confirm");
+      return;
+    }
+    if (step === "confirm") {
+      setStep("photo");
+      return;
+    }
+    if (onExit) {
+      onExit();
+      return;
+    }
+    onBack();
+  }
+
   return (
     <View>
-      <ScreenHeader onBack={onBack} eyebrow="Add plant" title="Confirm before adding" subtitle="Mock identification can suggest a starting point, but you stay in control of the plant name and placement." />
+      <ScreenHeader onBack={stepBack} eyebrow="Add plant" title="Confirm before adding" subtitle="Mock identification can suggest a starting point, but you stay in control of the plant name and placement." />
 
       {selectedPhotoUri ? (
         <Image source={{ uri: selectedPhotoUri }} style={styles.photoPreview} />

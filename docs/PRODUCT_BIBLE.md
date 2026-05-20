@@ -78,3 +78,11 @@ The current prototype now supports the first real garden-management loop:
 - Move it to another location or remove it from the personal garden.
 
 Plant detail information is mocked but should feel practical: water, light, feeding, soil, spacing, companions, bad companions, pests/diseases, natural controls, seed/transplant notes, pruning/harvest notes, toxicity warnings, current tasks, and recent activity.
+
+## Operating System Correction
+
+Garden App is not a plant tracker. It is a living digital twin of the user's real garden environment. The product should help users build, plan, manage, diagnose, harvest, and operate that environment.
+
+The core objects are environment-first: location, indoor area, outdoor area, garden, bed, planter, container, species, plant instance, display name, photo, task, harvest schedule, weather context, diagnosis, and knowledge.
+
+The app should avoid duplicate indoor/outdoor questions. Once a workflow has selected indoor or outdoor, later steps should preserve that context unless the user intentionally changes it.

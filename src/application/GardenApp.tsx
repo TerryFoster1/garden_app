@@ -42,6 +42,7 @@ export function GardenApp() {
   const [selectedReferencePlant, setSelectedReferencePlant] = useState<PlantInstance | null>(null);
   const [selectedPlacement, setSelectedPlacement] = useState<GardenPlacement | null>(null);
   const [initialAddPlacement, setInitialAddPlacement] = useState<GardenPlacement | null>(null);
+  const [addPlantBackSignal, setAddPlantBackSignal] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
   const [model, setModel] = useState<GardenHomeModel>(() => mockGardenRepository.getHomeModel());
 
@@ -109,6 +110,11 @@ export function GardenApp() {
   }
 
   function handleBack() {
+    if (overlay === "addPlant") {
+      setAddPlantBackSignal((current) => current + 1);
+      return;
+    }
+
     if (overlay === "plantDetail" && selectedPlacement) {
       setOverlay("manageLocation");
       return;
@@ -117,6 +123,12 @@ export function GardenApp() {
     setOverlay(null);
     setInitialAddPlacement(null);
     setSelectedReferencePlant(null);
+  }
+
+  function handleExitAddPlant() {
+    setOverlay(null);
+    setInitialAddPlacement(null);
+    setSelectedPhotoUri(null);
   }
 
   function handleOpenPlant(plantId: string) {
@@ -255,6 +267,84 @@ export function GardenApp() {
     setSelectedPlacement(placement);
   }
 
+  function handleRenamePlant(plantId: string, displayName: string) {
+    setModel((current) => ({
+      ...current,
+      plantInstances: current.plantInstances.map((plant) => (plant.id === plantId ? { ...plant, nickname: displayName } : plant))
+    }));
+  }
+
+  function handleMarkWatered(plantId: string) {
+    const plant = model.plantInstances.find((item) => item.id === plantId);
+    if (!plant) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setModel((current) => ({
+      ...current,
+      tasks: [
+        {
+          id: `task-${plantId}-watered-${Date.now()}`,
+          plantInstanceId: plantId,
+          gardenBedId: plant.bedId,
+          type: "watering",
+          title: `Watered ${plant.nickname}`,
+          dueAt: now,
+          priority: "low",
+          status: "done",
+          reason: "Logged from plant detail. Future schedule rules can use this as the last-watered signal."
+        },
+        ...current.tasks.map((task) => (task.plantInstanceId === plantId && task.type === "watering" ? { ...task, status: "done" as const } : task))
+      ]
+    }));
+  }
+
+  function handleHarvestPlant(plantId: string) {
+    const plant = model.plantInstances.find((item) => item.id === plantId);
+    if (!plant) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setModel((current) => ({
+      ...current,
+      tasks: [
+        {
+          id: `task-${plantId}-harvest-${Date.now()}`,
+          plantInstanceId: plantId,
+          gardenBedId: plant.bedId,
+          type: "harvest",
+          title: `Harvest logged for ${plant.nickname}`,
+          dueAt: now,
+          priority: "low",
+          status: "done",
+          reason: "Manual harvest log. Future harvest schedule will adjust from photos and yield history."
+        },
+        ...current.tasks
+      ]
+    }));
+  }
+
+  function handleUpdateBed(bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) {
+    setModel((current) => ({
+      ...current,
+      beds: current.beds.map((bed) =>
+        bed.id === bedId
+          ? {
+              ...bed,
+              name: updates.name,
+              lengthFeet: updates.lengthFeet,
+              widthFeet: updates.widthFeet,
+              depthInches: updates.depthInches
+            }
+          : bed
+      ),
+      plantInstances: current.plantInstances.map((plant) => (plant.bedId === bedId ? { ...plant, locationLabel: updates.name } : plant))
+    }));
+    setSelectedPlacement((current) => (current?.bedId === bedId ? { ...current, label: updates.name, locationLabel: updates.name } : current));
+  }
+
   function handleRemovePlant(plantId: string) {
     setModel((current) => ({
       ...current,
@@ -304,12 +394,15 @@ export function GardenApp() {
           onMovePlant={openSelectedPlantLocation}
           onRemovePlant={() => confirmRemovePlant(selectedPlant)}
           onScanPlant={handleOpenScan}
+          onRenamePlant={handleRenamePlant}
+          onMarkWatered={handleMarkWatered}
+          onHarvestPlant={handleHarvestPlant}
         />
       );
     }
 
     if (overlay === "addPlant") {
-      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} initialPlacement={initialAddPlacement} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={handleBack} />;
+      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} initialPlacement={initialAddPlacement} backSignal={addPlantBackSignal} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={handleBack} onExit={handleExitAddPlant} />;
     }
 
     if (overlay === "manageLocation" && selectedPlacement) {
@@ -322,6 +415,7 @@ export function GardenApp() {
           onOpenPlant={handleOpenPlant}
           onMovePlant={handleMovePlant}
           onRemovePlant={handleRemovePlant}
+          onUpdateBed={handleUpdateBed}
         />
       );
     }
@@ -351,6 +445,9 @@ export function GardenApp() {
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
           onOpenPlant={handleOpenPlant}
           onOpenScan={handleOpenScan}
+          onAddPlant={() => handleOpenAddPlant(null)}
+          onAddGarden={() => setOverlay("gardenSetup")}
+          onOpenGarden={() => setActiveTab("garden")}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
         />

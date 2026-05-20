@@ -53,6 +53,10 @@ Tapping a bed, planter, container, or indoor zone opens a management surface. Th
 
 This management surface is still spatial and mobile-first. It should not become a spreadsheet or inventory table.
 
+## Current Interaction Level
+
+The current prototype supports an overhead bed visual, spacing circles, plant taps, bed edits, and add/move/remove flows. It does not yet support true drag/drop or saved within-bed coordinates. The next version should add tap-to-place coordinates before drag/drop.
+
 ## Garden Ownership
 
 The user should recognize their beds and plants without reading paragraphs. Use names sparingly, but lean on visual grouping, plant glyphs/photos, status rings, and environmental tinting.

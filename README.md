@@ -115,7 +115,10 @@ git push -u origin main
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, receive a mock identification, confirm or edit it, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
 - Live My Garden management loop: switch between outdoor beds, containers, and indoor plants; tap a bed/zone; add plants to that exact location; move plants between locations; remove only the personal plant instance; open real plant detail pages.
-- Interactive Planner foundation: tap outdoor beds, add plants to a bed, view plant markers, dimensions, sun/shade indicators, and mocked spacing warnings.
+- Bed detail editing: edit bed name/dimensions, see overhead plant placement, spacing circles, companion notes, and mocked planning warnings.
+- Plant operations: rename display name, mark watered, log harvest, move, remove, scan, and open useful plant detail.
+- Command center Today view: weather/status hero, urgent actions, quick actions, care/harvest schedule toggle, My Garden shortcut, and visual garden pulse.
+- Interactive Planner foundation: tap outdoor beds, add plants to a bed, view plant markers, dimensions, sun/shade indicators, spacing circles, and rule-style recommendations.
 - Local-first persistence using AsyncStorage so plant add/move/remove changes survive app reloads on the device.
 - Entitlement/subscription service foundation with paywall disabled.
 - Temporary Expo web export for preview/testing only.
@@ -130,6 +133,7 @@ Mocked:
 - Notifications.
 - Auth, accounts, saved user data, and subscription lookups.
 - Weather/sun/moisture status, companion checks, and spacing warnings.
+- Harvest estimates are knowledge/rule based, not photo adjusted yet.
 - Plant knowledge is a useful mock dataset, not a live provider.
 - Selected photos are held in app state for now.
 
@@ -141,6 +145,9 @@ Real foundation:
 - Mobile-first screen architecture.
 - Expo Image Picker camera/library permission flow.
 - Plant creation, movement, removal, and Today task generation through local app state.
+- Plant display-name rename without changing PlantSpecies.
+- Bed name/dimension editing in local state.
+- Watered and harvest logs as completed care tasks.
 - AsyncStorage persistence for the mock garden model.
 - Plant detail pages powered by mock plant knowledge rather than placeholder copy.
 - Temporary static Expo web build for preview/testing.

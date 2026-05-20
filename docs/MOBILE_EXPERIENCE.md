@@ -59,3 +59,9 @@ Android hardware and gesture back should follow the user's spatial path:
 bed or zone manager -> plant detail -> back to bed or zone manager -> back to My Garden.
 
 At tab roots, default platform behavior can take over. Inside overlay flows, the app should intercept back so the user does not accidentally lose context while standing outdoors.
+
+## Add Flow Context
+
+When Add Plant starts from a bed/container/zone, the selected location should stay attached to the flow. The user should not have to answer indoor/outdoor again unless they intentionally move the plant to another location.
+
+Android back should step backward through Add Plant before leaving the flow.

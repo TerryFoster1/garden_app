@@ -64,3 +64,11 @@ This flow must stay touch-first and fast. Plants are not dead records: tapping o
 ## Planner Direction Now
 
 Planner is interactive even before drag/drop exists. Tapping a bed opens management, plant dots show where living items are, and spacing/sun warnings can be mocked while the future rules engine is built. The next step is true placement coordinates and drag/drop movement inside a bed.
+
+## Command Center Direction
+
+Today is not a dashboard. It is the garden command center: weather context, required actions, quick action buttons, care/harvest toggle, garden preview, and diagnosis entry. It should help the user decide what to do now while outside.
+
+## Display Name Rule
+
+Users can rename a PlantInstance without changing PlantSpecies. "Tomato Holland" can still be a Cherry Tomato under the hood.

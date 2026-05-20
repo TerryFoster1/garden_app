@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { GardenHomeModel } from "../../domain";
 import { estimateSunExposure } from "../../services";
+import { getBedPlanningSummary, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
+import { getPlantKnowledge } from "../../data/plantKnowledge";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 import { GardenPlacement } from "../my-garden/LocationManagementScreen";
 
@@ -39,7 +41,8 @@ export function PlannerScreen({ model, onOpenGardenSetup, onOpenPlacement, onAdd
       <View style={styles.mapGrid}>
         {model.beds.map((bed, index) => {
           const plants = model.plantInstances.filter((plant) => plant.bedId === bed.id);
-          const crowded = plants.length > Math.max(4, Math.floor((bed.lengthFeet * bed.widthFeet) / 2));
+          const planning = getBedPlanningSummary(bed, plants, model.species);
+          const crowded = planning.warnings.length > 0;
           const placement: GardenPlacement = {
             id: bed.id,
             label: bed.name,
@@ -60,13 +63,22 @@ export function PlannerScreen({ model, onOpenGardenSetup, onOpenPlacement, onAdd
               <View style={styles.bedCanvas}>
                 {plants.slice(0, 8).map((plant, plantIndex) => {
                   const point = getPoint(plantIndex);
-                  return <View key={plant.id} style={[styles.plantDot, { left: point.left, top: point.top }]} />;
+                  const species = model.species.find((item) => item.id === plant.speciesId);
+                  const spacing = getPlantPlanMetrics(species, plant.nickname).spacingInches;
+                  const knowledge = getPlantKnowledge(species, plant.nickname);
+                  return (
+                    <View key={plant.id} style={[styles.plantSpacing, { left: point.left, top: point.top, width: spacing * 1.7, height: spacing * 1.7, borderRadius: spacing * 0.85 }]}>
+                      <Text style={styles.plantGlyph}>{knowledge.visual}</Text>
+                    </View>
+                  );
                 })}
                 <View style={[styles.sunWash, index % 2 === 0 && styles.sunWashWarm]} />
               </View>
 
+              <Text style={styles.recommendationText}>{planning.warnings[0] ?? planning.suggestions[0]}</Text>
+
               <View style={styles.bedPlanFooter}>
-                <Text style={styles.bedSignal}>{crowded ? "Spacing watch" : `${plants.length} plants`}</Text>
+                <Text style={styles.bedSignal}>{crowded ? "Spacing watch" : `${plants.length}/${planning.capacity} guide`}</Text>
                 <TouchableOpacity accessibilityRole="button" style={styles.addChip} onPress={() => onAddPlantToPlacement(placement)}>
                   <Text style={styles.addChipText}>Add</Text>
                 </TouchableOpacity>
@@ -173,15 +185,25 @@ const styles = StyleSheet.create({
     position: "relative",
     overflow: "hidden"
   },
-  plantDot: {
+  plantSpacing: {
     position: "absolute",
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.leaf,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(94, 143, 76, 0.65)",
     borderWidth: 2,
-    borderColor: colors.surface,
+    borderColor: "rgba(255,255,255,0.78)",
     zIndex: 2
+  },
+  plantGlyph: {
+    color: colors.white,
+    fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  recommendationText: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 20
   },
   sunWash: {
     position: "absolute",

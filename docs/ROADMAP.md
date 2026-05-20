@@ -13,22 +13,27 @@
 
 ## Phase 2: Real Device Loops
 
-- Persist selected photos and plant instances beyond the current app session.
-- Add local-first task completion and queued updates for poor-signal field usage.
+- Persist plant add/move/remove/rename, bed edits, watered logs, and harvest logs beyond the current app session.
+- Add local-first queued updates for poor-signal field usage.
 - Location permission and saved garden location.
 - Compass/orientation capture.
 - Local notification permission and test reminders.
 - Persistent local storage.
 - Replace mock identification with a real provider behind the existing adapter.
+- Add tap-to-place coordinates and then drag/drop placement within beds.
+- Add editable harvest observations and photo-update reminders.
 - Add basic auth readiness: email/password, Google login plan, admin email handling, subscription lookup boundary, and saved user garden records.
 
 ## Phase 3: Garden Model + Scheduling
 
 - Create/edit gardens, zones, beds, containers, obstructions, and plant instances.
+- First setup workflow: continue locally, location/address, automatic climate/weather context, Add Plant or Create Garden.
 - Deterministic care schedule generation.
+- Deterministic harvest schedule generation.
 - Task completion, skip reasons, and observation history.
 - Weather-aware watering and protection tasks.
 - Offline cache for garden data, schedules, observations, and recent weather snapshots.
+- AI Plan My Garden scaffold with rules validation and user confirmation before any changes are applied.
 
 ## Phase 4: Provider Integrations
 

@@ -85,6 +85,23 @@ The technical architecture can stay modular, but the screen architecture should 
 
 Today is the status center. Scan is the identity-defining action. My Garden should become visual and spatial. Planner should become tactile and strategic. Knowledge should remain contextual and secondary.
 
+## Workflow Architecture
+
+The app is organized around operating workflows, not generic screens:
+
+- First setup: account/local mode, location permission or address, automatic weather/climate context, then Add Plant or Create Garden.
+- Add Plant first: choose Indoor or Outdoor once, identify/search/manual add, collect missing context, save PlantInstance, generate schedules.
+- Create Garden first: define indoor/outdoor area, bed/container/room, dimensions, soil/sun/orientation, then add plants or plan.
+- Bed detail: edit bed dimensions, add/move/remove plants, see overhead layout, spacing warnings, companion notes, tasks, and harvest actions.
+- Plant detail: show species knowledge plus personal instance state, rename display name, mark watered, harvest, move, remove, scan, or diagnose.
+- Command center: weather, urgent tasks, quick actions, care/harvest schedule, garden preview, diagnosis and knowledge shortcuts.
+
+`PlantSpecies` remains generic. `PlantInstance` is the user's living object. The display name is currently `PlantInstance.nickname`; renaming changes only the display name and does not mutate species knowledge.
+
+## Current Local Persistence
+
+The prototype persists the `GardenHomeModel` with AsyncStorage. This is deliberately replaceable. A future repository layer should migrate this to versioned local storage plus backend sync without changing feature-screen intent.
+
 ## Offline + Field Usage
 
 Users may be outside, in greenhouses, or in poor signal areas. Future persistence should be local-first:

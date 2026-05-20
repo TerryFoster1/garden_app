@@ -68,8 +68,20 @@ When a plant is added, moved, or removed:
 
 - `PlantSpecies` remains generic knowledge.
 - `PlantInstance` changes location or leaves the user's garden.
+- `PlantInstance.nickname` currently acts as PlantDisplayName and can be renamed without changing species.
 - Tasks tied to a removed PlantInstance are removed.
 - Today, My Garden, Planner, and Plant Detail read from the same local model.
+
+## Missing Fields For Next Version
+
+The next data-model pass should add:
+
+- Location/address entity separate from User.
+- IndoorArea and OutdoorArea aliases or typed Garden/GardenZone kinds.
+- PlantDisplayName as an explicit field if nickname becomes overloaded.
+- Plant placement coordinates inside beds.
+- HarvestSchedule and harvest log entries.
+- Diagnosis records tied to photos and observations.
 
 ## Subscription Readiness
 

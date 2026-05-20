@@ -29,6 +29,16 @@ Flow:
 - Remind for pest checks.
 - Remind for hardening off transplants.
 
+## Notification Types To Support
+
+- Morning schedule: today's care tasks, weather summary, rain/frost/heat alerts, and harvest windows.
+- Action-needed care: water plant, water bed, fertilize, prune, deadhead, pest check, support/trellis, harden off.
+- Weather protection: frost cover, shade during heat, wind protection, heavy rain warning, avoid fertilizing before rain.
+- Harvest: window opening, harvest now, check ripeness, log yield.
+- Weekly photo update: photograph key plants so growth stage and harvest estimates can improve later.
+
+For V1 these are local/mock architecture notes and care tasks. Production push notifications belong in the Expo/EAS mobile release phase.
+
 ## Notification Tone
 
 Good: "Cover tender peppers tonight if the forecast drops again."

@@ -3,6 +3,7 @@ import { DimensionValue, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import { Ionicons } from "@expo/vector-icons";
 
 import { CareTask, GardenBed, GardenHomeModel } from "../../domain";
+import { getDaysUntilHarvest, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type TodayScreenProps = {
@@ -12,6 +13,9 @@ type TodayScreenProps = {
   onOpenWeatherAlerts: () => void;
   onOpenPlant: (plantId: string) => void;
   onOpenScan: () => void;
+  onAddPlant: () => void;
+  onAddGarden: () => void;
+  onOpenGarden: () => void;
   onCompleteTask: (taskId: string) => void;
   onSnoozeTask: (taskId: string) => void;
 };
@@ -30,10 +34,14 @@ export function TodayScreen({
   onOpenWeatherAlerts,
   onOpenPlant,
   onOpenScan,
+  onAddPlant,
+  onAddGarden,
+  onOpenGarden,
   onCompleteTask,
   onSnoozeTask
 }: TodayScreenProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [scheduleMode, setScheduleMode] = useState<"care" | "harvest">("care");
 
   const actionableTasks = useMemo(
     () =>
@@ -49,6 +57,14 @@ export function TodayScreen({
   const conditionSummary = getConditionSummary(model);
   const visibleBeds = model.beds.slice(0, 5);
   const recentPlants = model.plantInstances.slice(0, 4);
+  const harvestPlants = model.plantInstances
+    .map((plant) => {
+      const species = model.species.find((item) => item.id === plant.speciesId);
+      return { plant, species, metrics: getPlantPlanMetrics(species, plant.nickname), days: getDaysUntilHarvest(plant, species) };
+    })
+    .filter((item) => item.metrics.edible)
+    .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999))
+    .slice(0, 4);
 
   return (
     <View style={styles.screen}>
@@ -103,7 +119,35 @@ export function TodayScreen({
         </TouchableOpacity>
       </View>
 
-      {actionableTasks.map((task) => {
+      <View style={styles.quickActions}>
+        <QuickAction icon="add-circle-outline" label="Add Plant" onPress={onAddPlant} />
+        <QuickAction icon="map-outline" label="Add Bed" onPress={onAddGarden} />
+        <QuickAction icon="medkit-outline" label="Diagnose" onPress={onOpenScan} />
+        <QuickAction icon="basket-outline" label="Harvest" onPress={() => setScheduleMode("harvest")} />
+      </View>
+
+      <View style={styles.segmented}>
+        <TouchableOpacity accessibilityRole="button" style={[styles.segment, scheduleMode === "care" && styles.activeSegment]} onPress={() => setScheduleMode("care")}>
+          <Text style={[styles.segmentText, scheduleMode === "care" && styles.activeSegmentText]}>Care Schedule</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" style={[styles.segment, scheduleMode === "harvest" && styles.activeSegment]} onPress={() => setScheduleMode("harvest")}>
+          <Text style={[styles.segmentText, scheduleMode === "harvest" && styles.activeSegmentText]}>Harvest</Text>
+        </TouchableOpacity>
+      </View>
+
+      {scheduleMode === "harvest" ? (
+        <View style={styles.harvestList}>
+          {harvestPlants.map(({ plant, metrics, days }) => (
+            <TouchableOpacity key={plant.id} accessibilityRole="button" style={styles.harvestItem} onPress={() => onOpenPlant(plant.id)}>
+              <Ionicons name="basket-outline" size={22} color={colors.leafDeep} />
+              <View style={styles.harvestCopy}>
+                <Text style={styles.harvestTitle}>{plant.nickname}</Text>
+                <Text style={styles.harvestText}>{days !== undefined ? `${days} days until harvest window` : metrics.harvestWindow ?? "Harvest timing needs a planting date"}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : actionableTasks.map((task) => {
         const isExpanded = expandedTaskId === task.id;
         return (
           <View key={task.id} style={[styles.taskCard, task.priority === "high" || task.priority === "urgent" ? styles.taskCardUrgent : null]}>
@@ -139,7 +183,9 @@ export function TodayScreen({
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Garden Pulse</Text>
-        <Text style={styles.sectionMeta}>Visual check</Text>
+        <TouchableOpacity accessibilityRole="button" onPress={onOpenGarden}>
+          <Text style={styles.sectionLink}>My Garden</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.bedMap}>
@@ -189,6 +235,15 @@ function BedPulse({ bed, index }: { bed: GardenBed; index: number }) {
       </View>
       <Text style={styles.bedMeta}>{bed.lengthFeet}ft x {bed.widthFeet}ft</Text>
     </View>
+  );
+}
+
+function QuickAction({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity accessibilityRole="button" style={styles.quickAction} onPress={onPress}>
+      <Ionicons name={icon} size={22} color={colors.leafDeep} />
+      <Text style={styles.quickActionText}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -383,6 +438,78 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "800",
     textTransform: "uppercase"
+  },
+  quickActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  quickAction: {
+    width: "48%",
+    minHeight: 58,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceWarm,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  quickActionText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  segmented: {
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    padding: 4
+  },
+  segment: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  activeSegment: {
+    backgroundColor: colors.leafDeep
+  },
+  segmentText: {
+    color: colors.textMuted,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  activeSegmentText: {
+    color: colors.white
+  },
+  harvestList: {
+    gap: spacing.sm
+  },
+  harvestItem: {
+    minHeight: 78,
+    borderRadius: 24,
+    backgroundColor: colors.sun,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  harvestCopy: {
+    flex: 1
+  },
+  harvestTitle: {
+    color: colors.leafDeep,
+    fontSize: typography.body,
+    fontWeight: "900"
+  },
+  harvestText: {
+    color: colors.soil,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 19
   },
   taskCard: {
     borderRadius: 26,
