@@ -4,7 +4,7 @@
 
 Warm, intelligent, practical, modern, and nature-connected. The app should feel like a calm garden assistant, not a spreadsheet and not generic corporate SaaS.
 
-The brand is for a mobile-only garden tool used outdoors, often one-handed, sometimes in bright sunlight or poor signal. It should feel practical before it feels decorative.
+The brand is for a mobile-first garden tool used outdoors, often one-handed, sometimes in bright sunlight or poor signal. Pattypan.ca also needs a polished web companion experience, but the brand should still feel practical before it feels decorative.
 
 The emotional reference is closer to Apple Weather plus a smart garden coach than Airtable, Notion, or a SaaS dashboard.
 

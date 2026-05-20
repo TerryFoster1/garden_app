@@ -1,7 +1,9 @@
+import { useMemo, useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { PlantSpecies } from "../../domain";
+import { aiRecommendationProvider, AiAssistantResponse } from "../../services/aiRecommendationProvider";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type KnowledgeScreenProps = {
@@ -11,15 +13,90 @@ type KnowledgeScreenProps = {
 };
 
 const topics = [
-  { label: "Pests & Bugs", icon: "bug-outline" },
-  { label: "Diseases", icon: "leaf-outline" },
-  { label: "Plant Care", icon: "water-outline" },
-  { label: "Propagation", icon: "git-branch-outline" },
-  { label: "Growing From Seed", icon: "file-tray-full-outline" }
+  { label: "Pests & Bugs", icon: "bug-outline", prompts: ["Aphids on peppers", "Cucumber beetles", "Natural pest control"] },
+  { label: "Diseases", icon: "leaf-outline", prompts: ["Yellow leaves", "Powdery mildew", "Tomato blight"] },
+  { label: "Plant Care", icon: "water-outline", prompts: ["Watering in heat", "Fertilizing herbs", "Pruning tomatoes"] },
+  { label: "Propagation", icon: "git-branch-outline", prompts: ["Root rosemary cuttings", "Divide chives", "Succulent offsets"] },
+  { label: "Growing From Seed", icon: "file-tray-full-outline", prompts: ["Start basil seeds", "Harden off seedlings", "When to transplant"] }
 ] as const;
 
+type LibraryTopic = (typeof topics)[number];
+
 export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: KnowledgeScreenProps) {
+  const [query, setQuery] = useState("");
+  const [activeTopic, setActiveTopic] = useState<LibraryTopic | null>(null);
+  const [answer, setAnswer] = useState<AiAssistantResponse | null>(null);
+  const [isAsking, setIsAsking] = useState(false);
   const featuredSpecies = species.slice(0, 4);
+  const filteredSpecies = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (normalized.length < 2) {
+      return [];
+    }
+
+    return species.filter((item) => `${item.commonName} ${item.scientificName ?? ""} ${item.family}`.toLowerCase().includes(normalized)).slice(0, 4);
+  }, [query, species]);
+
+  async function askPattypan(question = query.trim()) {
+    const cleanQuestion = question.trim();
+    if (!cleanQuestion) {
+      return;
+    }
+
+    setIsAsking(true);
+    try {
+      const result = await aiRecommendationProvider.askGardenAssistant({
+        question: cleanQuestion,
+        topic: activeTopic?.label,
+        context: "Kitchener/Waterloo home garden with raised beds, containers, houseplants, herbs, tomatoes, peppers, cucumbers, lettuce, strawberries, and succulents."
+      });
+      setAnswer(result);
+    } catch {
+      setAnswer({
+        provider: "local",
+        confidence: "low",
+        answer: "Pattypan could not reach the AI provider. Try again later, or use photo diagnosis/search for a local fallback.",
+        actions: ["Check the plant closely.", "Search the Library by symptom.", "Take a photo if the issue is visible."]
+      });
+    } finally {
+      setIsAsking(false);
+    }
+  }
+
+  if (activeTopic) {
+    return (
+      <View style={styles.screen}>
+        <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => { setActiveTopic(null); setAnswer(null); }}>
+          <Ionicons name="chevron-back" size={20} color={colors.leafDeep} />
+          <Text style={styles.sectionLink}>Library</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{activeTopic.label}</Text>
+        <Text style={styles.subtitle}>Search this topic, ask Pattypan, or use a photo when symptoms are visible.</Text>
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={28} color={colors.textMuted} />
+          <TextInput value={query} onChangeText={setQuery} placeholder={`Ask about ${activeTopic.label.toLowerCase()}...`} placeholderTextColor={colors.textMuted} style={styles.searchInput} onSubmitEditing={() => askPattypan()} />
+        </View>
+        <TouchableOpacity accessibilityRole="button" style={styles.fullButton} onPress={() => askPattypan()}>
+          <Ionicons name="sparkles-outline" size={20} color={colors.white} />
+          <Text style={styles.fullButtonText}>{isAsking ? "Asking Pattypan..." : "Ask Pattypan"}</Text>
+        </TouchableOpacity>
+        {(activeTopic.label === "Pests & Bugs" || activeTopic.label === "Diseases") ? (
+          <TouchableOpacity accessibilityRole="button" style={styles.photoPrompt} onPress={onDiagnoseByPhoto}>
+            <Ionicons name="camera" size={24} color={colors.leafDeep} />
+            <Text style={styles.photoPromptText}>Diagnose by photo</Text>
+          </TouchableOpacity>
+        ) : null}
+        <View style={styles.promptGrid}>
+          {activeTopic.prompts.map((prompt) => (
+            <TouchableOpacity key={prompt} accessibilityRole="button" style={styles.promptChip} onPress={() => { setQuery(prompt); askPattypan(prompt); }}>
+              <Text style={styles.promptText}>{prompt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {answer ? <AnswerCard answer={answer} /> : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -36,8 +113,24 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
 
       <View style={styles.searchBox}>
         <Ionicons name="search-outline" size={28} color={colors.textMuted} />
-        <TextInput placeholder="Search plants, problems, topics..." placeholderTextColor={colors.textMuted} style={styles.searchInput} />
+        <TextInput value={query} onChangeText={setQuery} placeholder="Search plants, problems, topics..." placeholderTextColor={colors.textMuted} style={styles.searchInput} onSubmitEditing={() => askPattypan()} />
       </View>
+
+      {filteredSpecies.length > 0 ? (
+        <View style={styles.searchResults}>
+          {filteredSpecies.map((item) => (
+            <TouchableOpacity key={item.id} accessibilityRole="button" style={styles.resultRow} onPress={() => onOpenPlant(item.id)}>
+              <Text style={styles.resultTitle}>{item.commonName}</Text>
+              <Text style={styles.resultMeta}>{item.scientificName ?? item.family}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : query.trim().length >= 2 ? (
+        <TouchableOpacity accessibilityRole="button" style={styles.askInline} onPress={() => askPattypan()}>
+          <Ionicons name="sparkles-outline" size={19} color={colors.leafDeep} />
+          <Text style={styles.addCustomText}>Ask Pattypan about "{query.trim()}"</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <View style={styles.primaryGrid}>
         <TouchableOpacity accessibilityRole="button" style={[styles.primaryCard, styles.diagnoseCard]} onPress={onDiagnoseByPhoto}>
@@ -72,7 +165,7 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
 
       <View style={styles.topicRow}>
         {topics.map((topic) => (
-          <TouchableOpacity key={topic.label} accessibilityRole="button" style={styles.topicChip}>
+          <TouchableOpacity key={topic.label} accessibilityRole="button" style={styles.topicChip} onPress={() => { setActiveTopic(topic); setAnswer(null); }}>
             <Ionicons name={topic.icon} size={27} color={colors.leafDeep} />
             <Text style={styles.topicText}>{topic.label}</Text>
           </TouchableOpacity>
@@ -118,10 +211,23 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
           <Text style={styles.askTitle}>Can't find what you're looking for?</Text>
           <Text style={styles.askText}>Ask our AI garden assistant.</Text>
         </View>
-        <TouchableOpacity accessibilityRole="button" style={styles.askButton}>
-          <Text style={styles.askButtonText}>Ask AI</Text>
+        <TouchableOpacity accessibilityRole="button" style={styles.askButton} onPress={() => askPattypan(query.trim() || "What should I check in my garden today?")}>
+          <Text style={styles.askButtonText}>{isAsking ? "Asking" : "Ask AI"}</Text>
         </TouchableOpacity>
       </View>
+      {answer ? <AnswerCard answer={answer} /> : null}
+    </View>
+  );
+}
+
+function AnswerCard({ answer }: { answer: AiAssistantResponse }) {
+  return (
+    <View style={styles.answerCard}>
+      <Text style={styles.matchLabel}>{answer.provider === "openai" ? "Pattypan AI" : "Local fallback"} - {answer.confidence} confidence</Text>
+      <Text style={styles.answerText}>{answer.answer}</Text>
+      {answer.actions.slice(0, 4).map((action) => (
+        <Text key={action} style={styles.actionBullet}>- {action}</Text>
+      ))}
     </View>
   );
 }
@@ -258,6 +364,121 @@ const styles = StyleSheet.create({
     color: colors.leaf,
     fontSize: typography.small,
     fontWeight: "900"
+  },
+  backRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  fullButton: {
+    minHeight: 52,
+    borderRadius: radii.pill,
+    backgroundColor: colors.leafDeep,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  fullButtonText: {
+    color: colors.white,
+    fontSize: typography.body,
+    fontWeight: "900"
+  },
+  photoPrompt: {
+    minHeight: 58,
+    borderRadius: 22,
+    backgroundColor: "#eef6e9",
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  photoPromptText: {
+    color: colors.leafDeep,
+    fontSize: typography.body,
+    fontWeight: "900"
+  },
+  promptGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  promptChip: {
+    minHeight: 44,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceWarm,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  promptText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  searchResults: {
+    gap: spacing.sm
+  },
+  resultRow: {
+    minHeight: 58,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    justifyContent: "center"
+  },
+  resultTitle: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  resultMeta: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    fontWeight: "700"
+  },
+  askInline: {
+    minHeight: 50,
+    borderRadius: 20,
+    backgroundColor: "#eef6e9",
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  addCustomText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  answerCard: {
+    borderRadius: 24,
+    backgroundColor: "#eef6e9",
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm
+  },
+  matchLabel: {
+    color: colors.leaf,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  answerText: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 21,
+    fontWeight: "800"
+  },
+  actionBullet: {
+    color: colors.textMuted,
+    fontSize: typography.small,
+    lineHeight: 20,
+    fontWeight: "800"
   },
   topicRow: {
     flexDirection: "row",

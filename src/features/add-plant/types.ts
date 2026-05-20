@@ -15,6 +15,15 @@ export type AddPlantPlacement = {
 export type AddPlantDraft = {
   photoUri?: string;
   identification?: MockPlantIdentificationResult;
+  scientificName?: string;
+  category?: string;
+  careSummary?: string;
+  lightNeeds?: string;
+  waterNeeds?: string;
+  feedingNeeds?: string;
+  spacing?: string;
+  daysToHarvest?: string;
+  companionNotes?: string;
   plantName: string;
   variety: string;
   placement: AddPlantPlacement;

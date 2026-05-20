@@ -3,7 +3,7 @@ export type BedShape = "rectangle" | "square" | "circle" | "l-shape" | "custom";
 export type SoilType = "potting-mix" | "raised-bed-mix" | "loam" | "clay" | "sandy" | "compost-rich" | "unknown";
 export type SunBand = "full-sun" | "part-sun" | "part-shade" | "shade";
 export type PlantLocationType = "in-ground" | "raised-bed" | "container" | "indoor-pot" | "greenhouse";
-export type PlantStage = "seed" | "seedling" | "transplant" | "established" | "flowering" | "fruiting";
+export type PlantStage = "seed" | "seedling" | "young" | "mature" | "transplant" | "established" | "flowering" | "fruiting";
 export type CareTaskType =
   | "watering"
   | "feeding"
@@ -98,6 +98,7 @@ export type PlantInstance = {
   speciesId: string;
   gardenId: string;
   bedId?: string;
+  currentProfilePhotoId?: string;
   nickname: string;
   locationLabel: string;
   locationType: PlantLocationType;
@@ -116,6 +117,19 @@ export type PlantPhoto = {
   uri: string;
   takenAt: string;
   purpose: "identify" | "diagnose" | "growth-log" | "pest" | "weed";
+  note?: string;
+  diagnosisId?: string;
+  growthStage?: PlantStage;
+};
+
+export type PlantGrowthSnapshot = {
+  id: string;
+  plantInstanceId: string;
+  photoId?: string;
+  recordedAt: string;
+  stage?: PlantStage;
+  note: string;
+  source: "manual" | "photo-update" | "diagnosis";
 };
 
 export type PlantIdentification = {
@@ -237,8 +251,11 @@ export type GardenHomeModel = {
   sunProfiles: SunExposureProfile[];
   species: PlantSpecies[];
   plantInstances: PlantInstance[];
+  plantPhotos?: PlantPhoto[];
+  growthSnapshots?: PlantGrowthSnapshot[];
   tasks: CareTask[];
   weather: WeatherSnapshot;
   weatherAlerts: WeatherAlert[];
   articles: KnowledgeArticle[];
+  notificationPreferences?: NotificationPreference[];
 };

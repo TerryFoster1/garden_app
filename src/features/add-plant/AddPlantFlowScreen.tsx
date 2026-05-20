@@ -7,8 +7,9 @@ import { GardenCard } from "../../components/GardenCard";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { GardenHomeModel, PlantStage } from "../../domain";
-import { getKnowledgeOptions } from "../../data/plantKnowledge";
-import { MockPlantIdentificationResult, stubPlantIdentificationProvider } from "../../services";
+import { PlantIndexRecord } from "../../data/plantIndex";
+import { MockPlantIdentificationResult, plantIdentificationProvider, PlantIdentificationMatch } from "../../services";
+import { searchPlants } from "../../services/plantSearch";
 import { colors, spacing, typography } from "../../theme/tokens";
 import { GardenPlacement, getGardenPlacements } from "../my-garden/LocationManagementScreen";
 import { AddPlantDraft, AddPlantPlacement } from "./types";
@@ -24,20 +25,28 @@ type AddPlantFlowScreenProps = {
   onExit?: () => void;
 };
 
-const stages: PlantStage[] = ["seed", "seedling", "transplant", "established", "flowering", "fruiting"];
+const stages: Array<{ value: PlantStage; label: string; helper: string }> = [
+  { value: "seed", label: "Seed", helper: "Track germination and transplant timing" },
+  { value: "seedling", label: "Seedling", helper: "Gentle water, light, and hardening off" },
+  { value: "young", label: "Young plant", helper: "Establish roots and placement" },
+  { value: "mature", label: "Mature plant", helper: "Care, harvest, pruning, or diagnosis" }
+];
 
 export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, backSignal = 0, onPhotoSelected, onPlantAdded, onBack, onExit }: AddPlantFlowScreenProps) {
   const [step, setStep] = useState<"photo" | "confirm" | "place">("photo");
   const [identification, setIdentification] = useState<MockPlantIdentificationResult | undefined>();
+  const [selectedIdentificationMatch, setSelectedIdentificationMatch] = useState<PlantIdentificationMatch | undefined>();
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [plantName, setPlantName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndexPlant, setSelectedIndexPlant] = useState<PlantIndexRecord | undefined>();
   const [variety, setVariety] = useState("");
-  const [stage, setStage] = useState<PlantStage>("transplant");
+  const [stage, setStage] = useState<PlantStage>("young");
   const [plantedOn, setPlantedOn] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
 
   const placements = useMemo<AddPlantPlacement[]>(() => getGardenPlacements(model), [model]);
-  const knowledgeOptions = useMemo(() => getKnowledgeOptions(), []);
+  const suggestions = useMemo(() => searchPlants(searchQuery), [searchQuery]);
 
   const [placementId, setPlacementId] = useState(initialPlacement?.id ?? placements[0]?.id ?? "");
   const selectedPlacement = placements.find((placement) => placement.id === placementId) ?? placements[0];
@@ -55,11 +64,12 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
     }
 
     setIsIdentifying(true);
-    stubPlantIdentificationProvider
+    plantIdentificationProvider
       .identifyPlant(selectedPhotoUri)
       .then((result) => {
         setIdentification(result);
-        setPlantName(result.possiblePlantName);
+        setSelectedIdentificationMatch(undefined);
+        setPlantName("");
         setNotes(result.warnings.join(" "));
         setStep("confirm");
       })
@@ -83,29 +93,56 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
 
     if (!result.canceled && result.assets[0]?.uri) {
       setIdentification(undefined);
+      setSelectedIdentificationMatch(undefined);
       onPhotoSelected(result.assets[0].uri);
     }
   }
 
   function acceptIdentification() {
-    if (identification) {
-      setPlantName(identification.possiblePlantName);
+    if (identification && selectedIdentificationMatch) {
+      setPlantName(selectedIdentificationMatch.commonName);
+      setSelectedIndexPlant(undefined);
+      setNotes(selectedIdentificationMatch.warnings.join(" "));
+      setStep("place");
+      return;
     }
-    setStep("place");
+
+    if (!identification && plantName.trim()) {
+      setStep("place");
+    }
   }
 
   function searchManually() {
     setIdentification(undefined);
+    setSelectedIdentificationMatch(undefined);
     setPlantName("");
-    setNotes("Added manually after skipping mock photo identification.");
+    setSearchQuery("");
+    setSelectedIndexPlant(undefined);
+    setNotes("Added manually after skipping photo identification.");
     setStep("confirm");
   }
 
-  function chooseKnownPlant(name: string) {
+  function chooseKnownPlant(plant: PlantIndexRecord) {
     setIdentification(undefined);
-    setPlantName(name);
-    setNotes(`Added from Garden App knowledge: ${name}.`);
-    setStep("place");
+    setSelectedIdentificationMatch(undefined);
+    setSelectedIndexPlant(plant);
+    setPlantName(plant.commonName);
+    setSearchQuery(plant.commonName);
+    setNotes(buildPlantIndexNotes(plant));
+    setStep("confirm");
+  }
+
+  function addCustomPlant() {
+    const customName = searchQuery.trim() || plantName.trim();
+    if (!customName) {
+      return;
+    }
+
+    setIdentification(undefined);
+    setSelectedIndexPlant(undefined);
+    setPlantName(customName);
+    setNotes("Custom plant. Species knowledge can be enriched later.");
+    setStep("confirm");
   }
 
   function savePlant() {
@@ -113,9 +150,34 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
       return;
     }
 
+    const confirmedIdentification =
+      selectedIdentificationMatch && identification
+        ? {
+            ...identification,
+            suggestedSpeciesId: selectedIdentificationMatch.suggestedSpeciesId,
+            confidence: selectedIdentificationMatch.confidence,
+            confidenceLabel: selectedIdentificationMatch.confidenceLabel,
+            possiblePlantName: selectedIdentificationMatch.commonName,
+            careSummary: selectedIdentificationMatch.careSummary,
+            lightNeeds: selectedIdentificationMatch.lightNeeds,
+            wateringNeeds: selectedIdentificationMatch.wateringNeeds,
+            feedingNotes: selectedIdentificationMatch.feedingNotes,
+            warnings: selectedIdentificationMatch.warnings
+          }
+        : identification;
+
     onPlantAdded({
       photoUri: selectedPhotoUri ?? undefined,
-      identification,
+      identification: confirmedIdentification,
+      scientificName: selectedIndexPlant?.scientificName ?? selectedIdentificationMatch?.scientificName,
+      category: selectedIndexPlant?.category,
+      careSummary: selectedIndexPlant ? `${selectedIndexPlant.commonName}: ${selectedIndexPlant.lightNeeds}; ${selectedIndexPlant.waterNeeds}.` : selectedIdentificationMatch?.careSummary,
+      lightNeeds: selectedIndexPlant?.lightNeeds ?? selectedIdentificationMatch?.lightNeeds,
+      waterNeeds: selectedIndexPlant?.waterNeeds ?? selectedIdentificationMatch?.wateringNeeds,
+      feedingNeeds: selectedIndexPlant?.category === "vegetable" || selectedIndexPlant?.category === "fruit" || selectedIndexPlant?.category === "berry" ? "moderate" : "light",
+      spacing: selectedIndexPlant?.spacing,
+      daysToHarvest: selectedIndexPlant?.daysToHarvest,
+      companionNotes: selectedIndexPlant?.companions?.join(", "),
       plantName: plantName.trim(),
       variety: variety.trim(),
       placement: selectedPlacement,
@@ -143,14 +205,14 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
 
   return (
     <View>
-      <ScreenHeader onBack={stepBack} eyebrow="Add plant" title="Confirm before adding" subtitle="Mock identification can suggest a starting point, but you stay in control of the plant name and placement." />
+      <ScreenHeader onBack={stepBack} eyebrow="Add plant" title="Confirm before adding" subtitle="Pattypan can identify from a photo, but you choose the final match before anything is added to your garden." />
 
       {selectedPhotoUri ? (
         <Image source={{ uri: selectedPhotoUri }} style={styles.photoPreview} />
       ) : (
         <GardenCard tone="warm">
           <Text style={styles.cardTitle}>Start with a photo or add manually</Text>
-          <Text style={styles.cardText}>Take a plant photo or choose one from your library. Identification is mocked for now.</Text>
+          <Text style={styles.cardText}>Take a plant photo or choose one from your library. PlantNet is used when configured, with local fallback if the API is unavailable.</Text>
         </GardenCard>
       )}
 
@@ -160,7 +222,8 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
             <PrimaryButton label="Take photo" onPress={() => pickImage("camera")} tone="sun" icon={<Ionicons name="camera" size={20} color={colors.leafDeep} />} style={styles.actionButton} />
             <PrimaryButton label="Pick photo" onPress={() => pickImage("library")} icon={<Ionicons name="images-outline" size={20} color={colors.white} />} style={styles.actionButton} />
           </View>
-          <PrimaryButton label="Search manually instead" onPress={searchManually} tone="quiet" />
+          <PlantAutocomplete query={searchQuery} suggestions={suggestions} onChangeQuery={setSearchQuery} onChoose={chooseKnownPlant} onAddCustom={addCustomPlant} />
+          <PrimaryButton label="Add manually instead" onPress={searchManually} tone="quiet" />
           {isIdentifying ? <Text style={styles.statusText}>Looking for a possible match...</Text> : null}
         </View>
       ) : null}
@@ -169,37 +232,67 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
         <View>
           {identification ? (
             <GardenCard tone="sky">
-              <Text style={styles.matchLabel}>{identification.confidenceLabel}</Text>
-              <Text style={styles.cardTitle}>{identification.possiblePlantName}</Text>
-              <Text style={styles.cardText}>{Math.round(identification.confidence * 100)}% mock confidence. Confirm before adding.</Text>
-              <Text style={styles.cardText}>{identification.careSummary}</Text>
-              <Text style={styles.cardText}>Light: {identification.lightNeeds}</Text>
-              <Text style={styles.cardText}>Water: {identification.wateringNeeds}. Feeding: {identification.feedingNotes}</Text>
-              {identification.warnings.map((warning) => (
-                <Text key={warning} style={styles.warningText}>{warning}</Text>
-              ))}
+              <Text style={styles.matchLabel}>{identification.provider === "plantnet" ? "PlantNet suggestions" : "Fallback suggestions"}</Text>
+              <Text style={styles.cardTitle}>Choose the closest match</Text>
+              <Text style={styles.cardText}>These are possible matches, not confirmed identities. Select one, edit the name if needed, then place the plant.</Text>
+              <View style={styles.matchList}>
+                {identification.matches.map((match) => (
+                  <TouchableOpacity
+                    key={match.id}
+                    accessibilityRole="button"
+                    style={[styles.matchOption, selectedIdentificationMatch?.id === match.id && styles.selectedMatchOption]}
+                    onPress={() => {
+                      setSelectedIdentificationMatch(match);
+                      setPlantName(match.commonName);
+                      setSearchQuery(match.commonName);
+                      setSelectedIndexPlant(undefined);
+                      setNotes(match.warnings.join(" "));
+                    }}
+                  >
+                    {match.imageUrl ? <Image source={{ uri: match.imageUrl }} style={styles.matchImage} /> : <View style={styles.matchGlyph}><Text style={styles.matchGlyphText}>{match.commonName.slice(0, 1)}</Text></View>}
+                    <View style={styles.matchCopy}>
+                      <Text style={styles.matchName}>{match.commonName}</Text>
+                      {match.scientificName ? <Text style={styles.matchMeta}>{match.scientificName}</Text> : null}
+                      <Text style={styles.matchMeta}>{match.confidenceLabel} - {Math.round(match.confidence * 100)}% confidence</Text>
+                    </View>
+                    <Ionicons name={selectedIdentificationMatch?.id === match.id ? "checkmark-circle" : "ellipse-outline"} size={23} color={selectedIdentificationMatch?.id === match.id ? colors.leafDeep : colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+              </View>
             </GardenCard>
           ) : (
             <GardenCard tone="warm">
               <Text style={styles.matchLabel}>Manual search</Text>
-              <Text style={styles.cardText}>Search is mocked in this slice. Type the plant name you want to add.</Text>
+              <Text style={styles.cardText}>Type the plant name you want to add. Suggestions come from the local searchable plant index.</Text>
             </GardenCard>
           )}
 
-          <TextInput value={plantName} onChangeText={setPlantName} placeholder="Plant name" placeholderTextColor={colors.textMuted} style={styles.input} />
+          <TextInput
+            value={plantName}
+            onChangeText={(value) => {
+              setPlantName(value);
+              setSearchQuery(value);
+              setSelectedIndexPlant(undefined);
+            }}
+            placeholder="Plant name"
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+          />
           <TextInput value={variety} onChangeText={setVariety} placeholder="Variety or nickname, optional" placeholderTextColor={colors.textMuted} style={styles.input} />
 
-          <Text style={styles.sectionTitle}>Or choose from garden knowledge</Text>
-          <View style={styles.chips}>
-            {knowledgeOptions.slice(0, 16).map((option) => (
-              <TouchableOpacity key={option.commonName} accessibilityRole="button" style={styles.chip} onPress={() => chooseKnownPlant(option.commonName)}>
-                <Text style={styles.chipText}>{option.commonName}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <PlantAutocomplete query={searchQuery} suggestions={suggestions} onChangeQuery={setSearchQuery} onChoose={chooseKnownPlant} onAddCustom={addCustomPlant} compact />
+
+          {selectedIndexPlant ? (
+            <GardenCard tone="surface">
+              <Text style={styles.matchLabel}>Selected from local plant index</Text>
+              <Text style={styles.cardTitle}>{selectedIndexPlant.commonName}</Text>
+              {selectedIndexPlant.scientificName ? <Text style={styles.cardText}>{selectedIndexPlant.scientificName}</Text> : null}
+              <Text style={styles.cardText}>{selectedIndexPlant.category} - {selectedIndexPlant.habit} - {selectedIndexPlant.lightNeeds}</Text>
+            </GardenCard>
+          ) : null}
 
           <View style={styles.actions}>
-            <PrimaryButton label="Accept" onPress={acceptIdentification} style={styles.actionButton} />
+            <PrimaryButton label={identification && !selectedIdentificationMatch ? "Choose a match first" : "Confirm match"} onPress={acceptIdentification} style={styles.actionButton} />
             <PrimaryButton label="Search manually" onPress={searchManually} tone="quiet" style={styles.actionButton} />
           </View>
         </View>
@@ -220,11 +313,20 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
           <Text style={styles.sectionTitle}>Plant stage</Text>
           <View style={styles.chips}>
             {stages.map((item) => (
-              <TouchableOpacity key={item} accessibilityRole="button" style={[styles.chip, item === stage && styles.activeChip]} onPress={() => setStage(item)}>
-                <Text style={[styles.chipText, item === stage && styles.activeChipText]}>{item}</Text>
+              <TouchableOpacity key={item.value} accessibilityRole="button" style={[styles.stageChip, item.value === stage && styles.activeChip]} onPress={() => setStage(item.value)}>
+                <Text style={[styles.chipText, item.value === stage && styles.activeChipText]}>{item.label}</Text>
+                <Text style={[styles.stageHelper, item.value === stage && styles.activeStageHelper]}>{item.helper}</Text>
               </TouchableOpacity>
             ))}
           </View>
+
+          {stage === "seed" ? (
+            <GardenCard tone="sky">
+              <Text style={styles.matchLabel}>Grow from seed</Text>
+              <Text style={styles.cardTitle}>Seed-start tracking scaffold</Text>
+              <Text style={styles.cardText}>Pattypan will create a germination check and a transplant timing placeholder. Future versions will add seed trays, indoor light, hardening off, and sowing calendars.</Text>
+            </GardenCard>
+          ) : null}
 
           <TextInput value={plantedOn} onChangeText={setPlantedOn} placeholder="Planted date YYYY-MM-DD" placeholderTextColor={colors.textMuted} style={styles.input} />
           <TextInput value={notes} onChangeText={setNotes} placeholder="Notes" placeholderTextColor={colors.textMuted} style={[styles.input, styles.notesInput]} multiline />
@@ -234,6 +336,75 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
       ) : null}
     </View>
   );
+}
+
+function PlantAutocomplete({
+  query,
+  suggestions,
+  compact = false,
+  onChangeQuery,
+  onChoose,
+  onAddCustom
+}: {
+  query: string;
+  suggestions: PlantIndexRecord[];
+  compact?: boolean;
+  onChangeQuery: (value: string) => void;
+  onChoose: (plant: PlantIndexRecord) => void;
+  onAddCustom: () => void;
+}) {
+  const hasQuery = query.trim().length >= 2;
+
+  return (
+    <View style={styles.searchBox}>
+      {!compact ? <Text style={styles.searchLabel}>Search plant database</Text> : null}
+      <View style={styles.searchInputRow}>
+        <Ionicons name="search-outline" size={21} color={colors.textMuted} />
+        <TextInput value={query} onChangeText={onChangeQuery} placeholder="Start typing basil, tomato, palm..." placeholderTextColor={colors.textMuted} style={styles.searchInput} autoCapitalize="words" />
+      </View>
+      {hasQuery ? (
+        <View style={styles.suggestions}>
+          {suggestions.map((plant) => (
+            <TouchableOpacity key={plant.id} accessibilityRole="button" style={styles.suggestionRow} onPress={() => onChoose(plant)}>
+              <View style={styles.suggestionIcon}>
+                <Text style={styles.suggestionIconText}>{plant.commonName.slice(0, 1)}</Text>
+              </View>
+              <View style={styles.suggestionCopy}>
+                <Text style={styles.suggestionName}>{plant.commonName}</Text>
+                <Text numberOfLines={1} style={styles.suggestionMeta}>
+                  {plant.scientificName ? `${plant.scientificName} - ` : ""}{plant.category} - {plant.habit}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          ))}
+          {suggestions.length === 0 ? (
+            <TouchableOpacity accessibilityRole="button" style={styles.addCustomRow} onPress={onAddCustom}>
+              <Ionicons name="add-circle-outline" size={21} color={colors.leafDeep} />
+              <Text style={styles.addCustomText}>Add "{query.trim()}" manually</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity accessibilityRole="button" style={styles.addCustomRow} onPress={onAddCustom}>
+              <Ionicons name="create-outline" size={19} color={colors.leafDeep} />
+              <Text style={styles.addCustomText}>None of these? Add manually</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function buildPlantIndexNotes(plant: PlantIndexRecord) {
+  const parts = [
+    plant.scientificName ? `Scientific name: ${plant.scientificName}.` : undefined,
+    `Light: ${plant.lightNeeds}.`,
+    `Water: ${plant.waterNeeds}.`,
+    plant.spacing ? `Spacing: ${plant.spacing}.` : undefined,
+    plant.daysToHarvest ? `Harvest: ${plant.daysToHarvest}.` : undefined
+  ].filter(Boolean);
+
+  return parts.join(" ");
 }
 
 const styles = StyleSheet.create({
@@ -254,6 +425,91 @@ const styles = StyleSheet.create({
   },
   buttonStack: {
     gap: spacing.sm
+  },
+  searchBox: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md
+  },
+  searchLabel: {
+    color: colors.leaf,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  searchInputRow: {
+    minHeight: 52,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceWarm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: "800"
+  },
+  suggestions: {
+    gap: spacing.xs
+  },
+  suggestionRow: {
+    minHeight: 62,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  suggestionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#eef6e9",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  suggestionIconText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  suggestionCopy: {
+    flex: 1
+  },
+  suggestionName: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  suggestionMeta: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    marginTop: 2
+  },
+  addCustomRow: {
+    minHeight: 48,
+    borderRadius: 18,
+    backgroundColor: "#eef6e9",
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  addCustomText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
   },
   cardTitle: {
     color: colors.text,
@@ -276,6 +532,58 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "800",
     lineHeight: 20
+  },
+  matchList: {
+    gap: spacing.sm,
+    marginTop: spacing.sm
+  },
+  matchOption: {
+    minHeight: 82,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    padding: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  selectedMatchOption: {
+    borderColor: colors.leafDeep,
+    backgroundColor: "#eef6e9"
+  },
+  matchImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceWarm
+  },
+  matchGlyph: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: colors.sage,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  matchGlyphText: {
+    color: colors.white,
+    fontSize: typography.section,
+    fontWeight: "900"
+  },
+  matchCopy: {
+    flex: 1
+  },
+  matchName: {
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  matchMeta: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    marginTop: 2
   },
   statusText: {
     color: colors.textMuted,
@@ -319,9 +627,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm
   },
+  stageChip: {
+    width: "48%",
+    minHeight: 92,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    justifyContent: "center",
+    gap: spacing.xs
+  },
   activeChip: {
     backgroundColor: colors.leafDeep,
     borderColor: colors.leafDeep
+  },
+  stageHelper: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    fontWeight: "700"
+  },
+  activeStageHelper: {
+    color: "rgba(255,255,255,0.78)"
   },
   chipText: {
     color: colors.textMuted,

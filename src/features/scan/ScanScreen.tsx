@@ -49,7 +49,7 @@ export function ScanScreen({ selectedPhotoUri, onPhotoSelected, onAddPlant }: Sc
       <ScreenHeader
         eyebrow="Camera first"
         title="Scan what you see"
-        subtitle="The camera is the fastest path for identifying plants, diagnosing stress, logging growth, and turning observations into safe care suggestions."
+        subtitle="The camera is the fastest path for PlantNet identification, diagnosis photos, growth logs, and safe care suggestions you confirm."
       />
 
       <View style={styles.cameraCircle}>

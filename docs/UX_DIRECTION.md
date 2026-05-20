@@ -47,15 +47,24 @@ The app can feel environmental without becoming decorative. Use weather state, l
 
 ## Spatial Ownership
 
-The garden is not a list of records. My Garden should be a living map where beds, pots, indoor zones, and plant clusters are recognized visually. The user should understand where plants are and what needs attention before reading details.
+The garden is not a list of records, but the overview should still stay calm. My Garden should help the user recognize Outdoor vs Indoor, then choose a bed or plant. Spatial detail appears after that choice.
 
 ## My Garden Direction
 
-Replace generic lists with bed clusters, mini maps, plant status rings, environmental overlays, and selected ecosystem panels. Details should appear after the user taps into a bed or plant.
+My Garden is now an overview and navigation layer, not the management layer.
+
+The top-level hierarchy is intentionally simple:
+
+1. Choose Outdoor or Indoor.
+2. Outdoor shows bed cards only.
+3. Indoor shows plant cards only.
+4. Tap into a bed or plant for detailed work.
+
+Planning visuals, spacing rings, movement, companion logic, and optimization belong in Bed Detail. Diagnosis, photo history, care intelligence, harvest timing, and notes belong in Plant Detail.
 
 ## Live Management Loop
 
-The primary ownership flow is:
+The primary ownership flow is progressive disclosure:
 
 My Garden -> Indoor or Outdoor -> bed, planter, container, or indoor zone -> manage plants inside -> plant detail.
 
@@ -65,9 +74,11 @@ This flow must stay touch-first and fast. Plants are not dead records: tapping o
 
 Planner is interactive even before drag/drop exists. Tapping a bed opens management, plant dots show where living items are, and spacing/sun warnings can be mocked while the future rules engine is built. The next step is true placement coordinates and drag/drop movement inside a bed.
 
-## Command Center Direction
+## Home Direction
 
-Home is not a dashboard. It is the garden command center: weather context, required actions, quick action buttons, care/harvest toggle, garden preview, and diagnosis entry. It should help the user decide what to do now while outside.
+Home is not a dashboard and not the whole app. It is an operational overview for the next few minutes: atmospheric weather context, urgent warnings, today's actionable checklist, and one strong Add Plant CTA.
+
+Schedules, garden management, harvesting, diagnosis, detailed bed state, and planning belong in My Garden or Library. Home should stay calm by showing only what affects the user's immediate outdoor decision.
 
 ## Navigation Cleanup
 

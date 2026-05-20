@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
-import { CareTask, GardenBed, GardenHomeModel, PlantInstance, PlantSpecies } from "../../domain";
+import { CareTask, GardenBed, GardenHomeModel, PlantInstance, PlantPhoto, PlantSpecies } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
 import { getDaysUntilHarvest, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
+import { getLatestPlantPhoto, getPlantPhotos } from "../../services/plantPhotos";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type PlantDetailScreenProps = {
@@ -19,9 +21,10 @@ type PlantDetailScreenProps = {
   onRenamePlant: (plantId: string, displayName: string) => void;
   onMarkWatered: (plantId: string) => void;
   onHarvestPlant: (plantId: string) => void;
+  onAddPhoto: (plantId: string, uri: string, purpose?: PlantPhoto["purpose"], note?: string) => void;
 };
 
-export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant, onRenamePlant, onMarkWatered, onHarvestPlant }: PlantDetailScreenProps) {
+export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant, onRenamePlant, onMarkWatered, onHarvestPlant, onAddPhoto }: PlantDetailScreenProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [displayName, setDisplayName] = useState(plant.nickname);
   const species = model.species.find((item) => item.id === plant.speciesId);
@@ -31,6 +34,8 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
   const isReferencePlant = plant.id.startsWith("knowledge-");
   const metrics = getPlantPlanMetrics(species, plant.nickname);
   const daysUntilHarvest = getDaysUntilHarvest(plant, species);
+  const photoHistory = getPlantPhotos(model, plant.id);
+  const latestPhoto = getLatestPlantPhoto(model, plant);
 
   useEffect(() => {
     setDisplayName(plant.nickname);
@@ -46,14 +51,42 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
     setIsRenaming(false);
   }
 
+  async function addPhoto(source: "camera" | "library") {
+    if (isReferencePlant) {
+      return;
+    }
+
+    const permission =
+      source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      return;
+    }
+
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.82 })
+        : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.82 });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      onAddPhoto(plant.id, result.assets[0].uri, "growth-log", "Photo update from plant detail.");
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <ScreenHeader onBack={onBack} eyebrow={plant.locationType.replaceAll("-", " ")} title={plant.nickname} subtitle={locationLine(plant, bed, model)} />
 
       <View style={styles.hero}>
-        <View style={styles.visualOrb}>
-          <Text style={styles.visualGlyph}>{knowledge.visual}</Text>
-        </View>
+        {latestPhoto ? (
+          <Image source={{ uri: latestPhoto.uri }} style={styles.heroPhoto} />
+        ) : (
+          <View style={styles.visualOrb}>
+            <Text style={styles.visualGlyph}>{knowledge.visual}</Text>
+          </View>
+        )}
         <View style={styles.heroCopy}>
           <Text style={styles.commonName}>{knowledge.commonName}</Text>
           {knowledge.scientificName ? <Text style={styles.scientificName}>{knowledge.scientificName}</Text> : null}
@@ -78,6 +111,40 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
       ) : null}
 
       {isRenaming ? <TextInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" placeholderTextColor={colors.textMuted} style={styles.nameInput} /> : null}
+
+      {!isReferencePlant ? (
+        <View style={styles.photoPanel}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Photo Timeline</Text>
+              <Text style={styles.sectionMeta}>{photoHistory.length > 0 ? `${photoHistory.length} updates` : "No photos yet"}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" style={styles.diagnoseButton} onPress={onScanPlant}>
+              <Ionicons name="medkit-outline" size={17} color={colors.leafDeep} />
+              <Text style={styles.diagnoseText}>Diagnose</Text>
+            </TouchableOpacity>
+          </View>
+
+          {photoHistory.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.photoRail}>
+              {photoHistory.map((photo) => (
+                <View key={photo.id} style={styles.photoTile}>
+                  <Image source={{ uri: photo.uri }} style={styles.photoTileImage} />
+                  <Text numberOfLines={1} style={styles.photoTileDate}>{formatPhotoDate(photo.takenAt)}</Text>
+                  <Text numberOfLines={2} style={styles.photoTileNote}>{photo.note ?? photo.purpose}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptyText}>Add weekly updates here so Pattypan can build a visual growth history for this plant.</Text>
+          )}
+
+          <View style={styles.actionRow}>
+            <PrimaryButton label="Take update" onPress={() => addPhoto("camera")} tone="sun" icon={<Ionicons name="camera" size={19} color={colors.leafDeep} />} style={styles.actionButton} />
+            <PrimaryButton label="Pick photo" onPress={() => addPhoto("library")} tone="quiet" icon={<Ionicons name="images-outline" size={19} color={colors.leafDeep} />} style={styles.actionButton} />
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.quickGrid}>
         <Fact icon="sunny-outline" label="Light" value={knowledge.lightNeeds} />
@@ -173,6 +240,10 @@ function locationLine(plant: PlantInstance, bed: GardenBed | undefined, model: G
   return `${garden?.name ?? "Garden"} - ${bed?.name ?? plant.locationLabel}`;
 }
 
+function formatPhotoDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value));
+}
+
 const styles = StyleSheet.create({
   screen: {
     gap: spacing.lg
@@ -198,6 +269,12 @@ const styles = StyleSheet.create({
     color: colors.leafDeep,
     fontSize: 42,
     fontWeight: "900"
+  },
+  heroPhoto: {
+    width: 108,
+    height: 108,
+    borderRadius: 32,
+    backgroundColor: colors.surfaceWarm
   },
   heroCopy: {
     flex: 1,
@@ -247,6 +324,53 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
     fontWeight: "800"
+  },
+  photoPanel: {
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  photoRail: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg
+  },
+  photoTile: {
+    width: 138,
+    gap: spacing.xs
+  },
+  photoTileImage: {
+    width: 138,
+    height: 104,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceWarm
+  },
+  photoTileDate: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  photoTileNote: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    fontWeight: "700"
+  },
+  diagnoseButton: {
+    minHeight: 38,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceWarm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md
+  },
+  diagnoseText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900"
   },
   quickGrid: {
     flexDirection: "row",

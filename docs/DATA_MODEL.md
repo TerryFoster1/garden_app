@@ -11,6 +11,7 @@ Example:
 
 ## Initial Entities
 
+- `PlantIndexRecord`: local searchable seed record for autocomplete. It is not the user's plant; it is lookup/reference data that can later be replaced or enriched by an external plant database.
 - `User`: profile, location, hardiness zone.
 - `Garden`: a garden collection such as outdoor garden or indoor plants.
 - `GardenZone`: logical zone with microclimate notes.
@@ -19,7 +20,8 @@ Example:
 - `SunExposureProfile`: morning/midday/afternoon exposure estimate.
 - `PlantSpecies`: generic plant knowledge.
 - `PlantInstance`: user's specific plant in a location.
-- `PlantPhoto`: photo with purpose such as identify, diagnose, growth log, pest, weed.
+- `PlantPhoto`: photo linked to a PlantInstance with purpose such as identify, diagnose, growth log, pest, weed.
+- `PlantGrowthSnapshot`: timeline entry created from a photo update, diagnosis, or manual observation.
 - `PlantIdentification`: provider/user-confirmed plant ID result.
 - `PlantHealthScan`: suspected health issues and recommended next actions.
 - `CareTask`: one actionable reminder or protection task.
@@ -46,6 +48,7 @@ The mobile app should eventually keep a local cache of:
 - Care tasks and completion status.
 - Recent weather snapshots and alerts.
 - Plant photos and growth logs.
+- Latest profile photo id for each PlantInstance when available.
 - User observations.
 
 Queued local mutations should support field use in poor signal:
@@ -82,6 +85,27 @@ The next data-model pass should add:
 - Plant placement coordinates inside beds.
 - HarvestSchedule and harvest log entries.
 - Diagnosis records tied to photos and observations.
+- Photo storage provider metadata, upload queue status, privacy controls, and thumbnail variants.
+- Explicit PlantPhotoTimeline views for comparing early/current growth.
+
+## Plant Photo System
+
+PlantInstance now supports `currentProfilePhotoId`. The latest uploaded or captured photo becomes the plant's profile image unless a future user action pins a specific photo.
+
+`PlantPhoto` stores URI, timestamp, purpose, optional note, optional diagnosis id, and optional growth stage. It can represent:
+
+- First identification photo.
+- Diagnosis photo.
+- Weekly growth update.
+- Pest or weed observation.
+
+`PlantGrowthSnapshot` records the plant's timeline state around a photo update. In the prototype this is local/mock metadata. Later, it should support AI growth-stage estimation, harvest timing adjustment, health comparison, and seasonal memory.
+
+## Local Plant Index
+
+Add Plant uses a local seed index for autocomplete only. It includes common names, alternate names, scientific names, category, indoor/outdoor habit, light/water/soil basics, spacing, harvest timing, companion hints, common issues, and toxicity warnings where relevant.
+
+The full index should not appear as a browse list in the UI. Users type first, suggestions appear, and unknown plants can be added manually as custom species.
 
 ## Subscription Readiness
 

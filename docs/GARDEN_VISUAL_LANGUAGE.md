@@ -13,7 +13,7 @@ The visual system should communicate garden state before text does.
 ## Visual Components
 
 - Garden hero: identity and ownership.
-- Bed mini-map: spatial recognition.
+- Bed overview card: navigation and recognition only.
 - Plant dot: fast plant placement marker.
 - Plant status ring: health/attention.
 - Environmental pill: current microclimate state.
@@ -43,15 +43,39 @@ Today, glyphs and visual plant marks are acceptable when they help recognition. 
 - Harvest milestones.
 - Seasonal state changes.
 
+## Plant Photo Memory
+
+The visual system should increasingly use the user's own plant photos instead of generic marks. The latest photo of a PlantInstance becomes its profile/hero image, and older photos become the growth timeline.
+
+This gives the garden memory: transplant day, first flowers, first fruit, pest recovery, harvest, dormancy, and seasonal change should become visible over time.
+
+When a plant has no photo, a glyph or illustration is acceptable. Once a photo exists, use the photo first with gentle health/status overlays.
+
+## Overview Restraint
+
+My Garden should use fewer visual systems than Bed Detail. It needs calm bed cards and indoor plant cards. It should not show full planner maps, spacing overlays, companion analytics, or dense environmental widgets.
+
+Spatial richness is still part of Pattypan, but it belongs one layer deeper where the user has chosen the bed or plant they want to work on.
+
 ## Premium Feel
 
 Premium does not mean more UI. It means fewer, clearer surfaces that feel alive, tactile, and trustworthy.
+
+## Home Weather Hero
+
+Home uses atmospheric weather as the emotional anchor: deep garden green, sunlight glow, soft cloud/rain graphics, and compact weather metrics. The hero should communicate the garden mood before the user reads every value.
+
+The hero should never become a dense forecast table. It should show temperature, condition, location, and the one weather or garden warning that matters most.
+
+## Home Checklist
+
+Today's actions are checklist items, not generic cards. They use icon, title, urgency dot, and compact actions. Reasons stay behind Why so the screen remains glanceable outdoors.
 
 ## Interaction States
 
 Visual garden elements should imply action:
 
-- Bed mini-maps open management.
+- Bed overview cards open Bed Detail.
 - Plant dots open plant detail.
 - Long-press plant dots open Harvest, Move, Rename, Details, and Remove actions.
 - Move chips relocate PlantInstances.

@@ -1,20 +1,21 @@
 # Home Screen Strategy
 
-The Today screen is the garden status center.
+The Home screen is the operational overview for Pattypan.
 
-It should not feel like "here is all my data." It should feel like "here is what the garden needs now."
+It has one job: answer "what do I need to know or do right now?"
+
+Home is not My Garden, Planner, Library, Profile, a schedule manager, or an analytics dashboard. Those responsibilities live deeper in the app.
 
 ## Structure
 
-1. Ambient Garden Header.
-2. Primary Action Zone.
-3. Needs Attention.
-4. Garden Pulse.
-5. Recent Activity.
+1. Weather / Conditions Hero.
+2. Today's Actions Checklist.
+3. Add Plant CTA.
+4. Fixed bottom navigation.
 
 ## Ambient Garden Header
 
-The header should feel weather-app quality: large, atmospheric, and contextual.
+The hero should feel weather-app quality: large, atmospheric, and contextual.
 
 It should summarize:
 
@@ -23,7 +24,7 @@ It should summarize:
 - Garden condition.
 - Alerts or warnings.
 - Moisture/heat/humidity feeling.
-- Task pressure.
+- Urgent task pressure.
 
 Examples:
 
@@ -32,15 +33,6 @@ Examples:
 - High mildew risk.
 - Good growing conditions.
 - Cold-night watch.
-
-## Primary Action Zone
-
-The screen should emphasize one or two major actions:
-
-- Scan Plant.
-- Tasks Now.
-
-Scan should feel central and tactile, not like a small utility button.
 
 ## Needs Attention
 
@@ -57,11 +49,19 @@ Task actions:
 - Why.
 - Open related plant when relevant.
 
-## Garden Pulse
+## Add Plant CTA
 
-Use visual zone/bed indicators instead of long lists. Show health, moisture, heat, shade, and watch states through compact visual surfaces.
+Home gets one major CTA: Add Plant.
 
-## Recent Activity
+This keeps the screen focused while preserving the most common creation workflow. Diagnosis, bed management, planning, harvest, and schedules live in Library or My Garden where their context is clearer.
 
-Recent scans, watering, harvests, additions, and diagnoses make the app feel alive and personal.
+## Explicitly Removed From Home
 
+- Large "Your garden" framing.
+- Recently Alive.
+- Garden Pulse.
+- Care Schedule / Harvest toggle.
+- Quick action grids.
+- Bed management and plant inventory previews.
+
+Home should feel calmer because it withholds anything that does not affect the user's next immediate action.

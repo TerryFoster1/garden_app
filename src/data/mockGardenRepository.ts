@@ -6,7 +6,9 @@ import {
   GardenZone,
   KnowledgeArticle,
   Obstruction,
+  PlantGrowthSnapshot,
   PlantInstance,
+  PlantPhoto,
   PlantSpecies,
   SunExposureProfile,
   User,
@@ -16,7 +18,7 @@ import {
 
 const user: User = {
   id: "user-kitchener",
-  name: "Kathryn",
+  name: "",
   locationLabel: "Kitchener/Waterloo, Ontario",
   latitude: 43.4516,
   longitude: -80.4925,
@@ -98,8 +100,8 @@ const species: PlantSpecies[] = [
 ];
 
 const plantInstances: PlantInstance[] = [
-  { id: "plant-tomato-bed-2", speciesId: "species-cherry-tomato", gardenId: "garden-home", bedId: "bed-2", nickname: "Cherry tomatoes in Bed 2", locationLabel: "Raised Bed 2, back row", locationType: "raised-bed", plantedOn: "2026-05-18", source: "transplant", healthStatus: "thriving", notes: "Needs trellis check before rapid growth." },
-  { id: "plant-peppers-bed-1", speciesId: "species-pepper", gardenId: "garden-home", bedId: "bed-1", nickname: "Peppers in Bed 1", locationLabel: "Raised Bed 1", locationType: "raised-bed", plantedOn: "2026-05-18", source: "transplant", healthStatus: "watch", notes: "Watch cold nights in Kitchener/Waterloo." },
+  { id: "plant-tomato-bed-2", currentProfilePhotoId: "photo-tomato-current", speciesId: "species-cherry-tomato", gardenId: "garden-home", bedId: "bed-2", nickname: "Cherry tomatoes in Bed 2", locationLabel: "Raised Bed 2, back row", locationType: "raised-bed", plantedOn: "2026-05-18", source: "transplant", healthStatus: "thriving", notes: "Needs trellis check before rapid growth." },
+  { id: "plant-peppers-bed-1", currentProfilePhotoId: "photo-pepper-current", speciesId: "species-pepper", gardenId: "garden-home", bedId: "bed-1", nickname: "Peppers in Bed 1", locationLabel: "Raised Bed 1", locationType: "raised-bed", plantedOn: "2026-05-18", source: "transplant", healthStatus: "watch", notes: "Watch cold nights in Kitchener/Waterloo." },
   { id: "plant-cucumbers-bed-3", speciesId: "species-cucumber", gardenId: "garden-home", bedId: "bed-3", nickname: "Cucumbers on trellis", locationLabel: "Raised Bed 3", locationType: "raised-bed", source: "seed", healthStatus: "thriving", notes: "Keep airflow and consistent water." },
   { id: "plant-lettuce-bed-4", speciesId: "species-lettuce", gardenId: "garden-home", bedId: "bed-4", nickname: "Lettuce patch", locationLabel: "Raised Bed 4, shadier edge", locationType: "raised-bed", source: "seed", healthStatus: "thriving", notes: "Needs heat protection later." },
   { id: "plant-basil-bed-2", speciesId: "species-basil", gardenId: "garden-home", bedId: "bed-2", nickname: "Basil beside tomatoes", locationLabel: "Raised Bed 2", locationType: "raised-bed", source: "transplant", healthStatus: "thriving", notes: "Pinch once established." },
@@ -122,6 +124,55 @@ const plantInstances: PlantInstance[] = [
   { id: "plant-echeveria-indoor", speciesId: "species-succulent", gardenId: "garden-indoor", nickname: "Echeveria-type succulent", locationLabel: "Sunny window", locationType: "indoor-pot", source: "houseplant", healthStatus: "watch", notes: "Check for stretching toward light." },
   { id: "plant-hibiscus-container", speciesId: "species-hibiscus", gardenId: "garden-home", nickname: "Hibiscus container", locationLabel: "Patio container", locationType: "container", source: "transplant", healthStatus: "thriving", notes: "Protect from cold wind." }
 ];
+
+const plantPhotos: PlantPhoto[] = [
+  {
+    id: "photo-tomato-start",
+    plantInstanceId: "plant-tomato-bed-2",
+    uri: "https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&w=800&q=80",
+    takenAt: "2026-05-18T09:00:00-04:00",
+    purpose: "growth-log",
+    note: "Transplant day in Raised Bed 2.",
+    growthStage: "transplant"
+  },
+  {
+    id: "photo-tomato-current",
+    plantInstanceId: "plant-tomato-bed-2",
+    uri: "https://images.unsplash.com/photo-1561136594-7f68413baa99?auto=format&fit=crop&w=800&q=80",
+    takenAt: "2026-05-20T08:30:00-04:00",
+    purpose: "growth-log",
+    note: "New growth after warm weather.",
+    growthStage: "established"
+  },
+  {
+    id: "photo-pepper-current",
+    plantInstanceId: "plant-peppers-bed-1",
+    uri: "https://images.unsplash.com/photo-1601648764658-cf37e8c89b70?auto=format&fit=crop&w=800&q=80",
+    takenAt: "2026-05-20T08:45:00-04:00",
+    purpose: "growth-log",
+    note: "Pepper transplant watch after cool nights.",
+    growthStage: "transplant"
+  },
+  {
+    id: "photo-basil-current",
+    plantInstanceId: "plant-basil-bed-2",
+    uri: "https://images.unsplash.com/photo-1618375569909-3c8616cf7733?auto=format&fit=crop&w=800&q=80",
+    takenAt: "2026-05-20T08:50:00-04:00",
+    purpose: "growth-log",
+    note: "Basil beside tomatoes.",
+    growthStage: "established"
+  }
+];
+
+const growthSnapshots: PlantGrowthSnapshot[] = plantPhotos.map((photo) => ({
+  id: `snapshot-${photo.id}`,
+  plantInstanceId: photo.plantInstanceId ?? "unknown",
+  photoId: photo.id,
+  recordedAt: photo.takenAt,
+  stage: photo.growthStage,
+  note: photo.note ?? "Photo update",
+  source: "photo-update"
+}));
 
 const tasks: CareTask[] = [
   { id: "task-water-raised-beds", gardenBedId: "bed-2", type: "watering", title: "Check raised bed moisture", dueAt: "2026-05-19T18:00:00-04:00", priority: "normal", status: "scheduled", reason: "No meaningful rain logged in the last 24 hours." },
@@ -147,6 +198,13 @@ const weatherAlerts: WeatherAlert[] = [
   { id: "alert-uv", type: "heat", title: "High UV for new starts", severity: "watch", startsAt: "2026-05-19T12:00:00-04:00", summary: "Harden off young plants gradually before full-day exposure." }
 ];
 
+const notificationPreferences = [
+  { id: "pref-morning", userId: user.id, taskType: "watering" as const, enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-feeding", userId: user.id, taskType: "feeding" as const, enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-weather", userId: user.id, taskType: "frost-protection" as const, enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-photo", userId: user.id, taskType: "pest-check" as const, enabled: false, quietHoursStart: "21:00", quietHoursEnd: "07:00" }
+];
+
 const articles: KnowledgeArticle[] = [
   { id: "article-hardening-off", title: "Hardening off transplants", category: "plant-care", summary: "Move seedlings outdoors gradually so wind, sun, and temperature shifts do not shock them.", relatedSpeciesIds: ["species-pepper", "species-cherry-tomato", "species-basil"] },
   { id: "article-mildew-risk", title: "Humidity and mildew risk", category: "disease", summary: "Warm, humid, low-airflow conditions can increase mildew pressure on dense plantings.", relatedSpeciesIds: ["species-cucumber", "species-strawberry"] },
@@ -164,10 +222,13 @@ export const mockGardenRepository = {
       sunProfiles,
       species,
       plantInstances,
+      plantPhotos,
+      growthSnapshots,
       tasks,
       weather,
       weatherAlerts,
-      articles
+      articles,
+      notificationPreferences
     };
   }
 };

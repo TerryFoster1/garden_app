@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Alert, DimensionValue, GestureResponderEvent, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, DimensionValue, GestureResponderEvent, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { GardenBed, GardenHomeModel, GardenZone, PlantInstance, PlantSpecies } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
+import { aiRecommendationProvider, AiBedOptimization } from "../../services/aiRecommendationProvider";
 import { getBedPlanningSummary, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
+import { getLatestPlantPhoto } from "../../services/plantPhotos";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 export type GardenPlacement = {
@@ -46,6 +48,8 @@ export function LocationManagementScreen({
   const [isEditingBed, setIsEditingBed] = useState(false);
   const [replantingPlantId, setReplantingPlantId] = useState<string | null>(null);
   const [movingToAnotherPlantId, setMovingToAnotherPlantId] = useState<string | null>(null);
+  const [optimization, setOptimization] = useState<AiBedOptimization | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const plants = getPlantsForPlacement(model.plantInstances, placement);
   const bed = placement.bedId ? model.beds.find((item) => item.id === placement.bedId) : undefined;
   const [bedName, setBedName] = useState(bed?.name ?? placement.label);
@@ -133,6 +137,18 @@ export function LocationManagementScreen({
     setIsEditingBed(false);
   }
 
+  async function optimizeBed() {
+    setIsOptimizing(true);
+    try {
+      const result = await aiRecommendationProvider.optimizeBed({ bed, plants, species: model.species, sunProfile });
+      setOptimization(result);
+    } catch {
+      Alert.alert("AI Optimize Bed", "Pattypan could not reach the AI provider. Local spacing rules are still available below.");
+    } finally {
+      setIsOptimizing(false);
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <ScreenHeader onBack={onBack} eyebrow={placement.kind} title={placement.label} subtitle={bed ? `${bed.lengthFeet}ft x ${bed.widthFeet}ft - ${bed.soilType.replaceAll("-", " ")}` : placement.locationLabel} />
@@ -164,6 +180,7 @@ export function LocationManagementScreen({
               {plants.slice(0, 9).map((plant, index) => {
                 const species = model.species.find((item) => item.id === plant.speciesId);
                 const knowledge = getPlantKnowledge(species, plant.nickname);
+                const photo = getLatestPlantPhoto(model, plant);
                 const spacing = getPlantPlanMetrics(species, plant.nickname).spacingInches;
                 const point =
                   plant.positionXPercent !== undefined && plant.positionYPercent !== undefined
@@ -179,7 +196,7 @@ export function LocationManagementScreen({
                     onLongPress={() => openPlantMenu(plant)}
                     delayLongPress={350}
                   >
-                    <Text style={styles.spacingGlyph}>{knowledge.visual}</Text>
+                    {photo ? <Image source={{ uri: photo.uri }} style={styles.spacingPhoto} /> : <Text style={styles.spacingGlyph}>{knowledge.visual}</Text>}
                   </TouchableOpacity>
                 );
               })}
@@ -197,19 +214,31 @@ export function LocationManagementScreen({
       ) : null}
 
       <PrimaryButton label="Add plant here" onPress={() => onAddPlant(placement)} tone="sun" icon={<Ionicons name="add" size={20} color={colors.leafDeep} />} />
-      {bed ? <PrimaryButton label="AI Optimize Bed" onPress={() => Alert.alert("AI Plan My Garden", "Mock scaffold: add desired plants and priorities next. Rules will validate before any layout changes are applied.")} tone="quiet" icon={<Ionicons name="sparkles-outline" size={20} color={colors.leafDeep} />} /> : null}
+      {bed ? <PrimaryButton label={isOptimizing ? "Optimizing..." : "AI Optimize Bed"} onPress={optimizeBed} tone="quiet" icon={<Ionicons name="sparkles-outline" size={20} color={colors.leafDeep} />} /> : null}
+
+      {optimization ? (
+        <View style={styles.optimizationPanel}>
+          <Text style={styles.notesTitle}>{optimization.provider === "openai" ? "Pattypan AI plan" : "Local rules plan"}</Text>
+          <Text style={styles.notesText}>{optimization.summary}</Text>
+          {[...optimization.warnings, ...optimization.recommendations].slice(0, 6).map((item) => (
+            <Text key={item} style={styles.notesText}>- {item}</Text>
+          ))}
+          <Text style={styles.confidenceText}>Confidence: {optimization.confidence}. Review before moving plants.</Text>
+        </View>
+      ) : null}
 
       <Text style={styles.sectionTitle}>Plants here</Text>
       {plants.length === 0 ? <Text style={styles.emptyText}>No plants here yet. Add one to make this space alive.</Text> : null}
       {plants.map((plant) => {
         const species = model.species.find((item) => item.id === plant.speciesId);
         const knowledge = getPlantKnowledge(species, plant.nickname);
+        const photo = getLatestPlantPhoto(model, plant);
 
         return (
           <View key={plant.id} style={styles.plantRow}>
             <TouchableOpacity accessibilityRole="button" style={styles.plantMain} onPress={() => onOpenPlant(plant.id)}>
               <View style={[styles.plantOrb, plant.healthStatus === "watch" && styles.plantOrbWatch]}>
-                <Text style={styles.plantGlyph}>{knowledge.visual}</Text>
+                {photo ? <Image source={{ uri: photo.uri }} style={styles.plantOrbImage} /> : <Text style={styles.plantGlyph}>{knowledge.visual}</Text>}
               </View>
               <View style={styles.plantCopy}>
                 <Text style={styles.plantName}>{plant.nickname}</Text>
@@ -480,6 +509,11 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "900"
   },
+  spacingPhoto: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 999
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: typography.section,
@@ -518,6 +552,11 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.section,
     fontWeight: "900"
+  },
+  plantOrbImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 29
   },
   plantCopy: {
     flex: 1
@@ -612,6 +651,14 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm
   },
+  optimizationPanel: {
+    borderRadius: 24,
+    backgroundColor: "#eef6e9",
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm
+  },
   notesTitle: {
     color: colors.text,
     fontSize: typography.body,
@@ -622,5 +669,11 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20,
     fontWeight: "800"
+  },
+  confidenceText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
   }
 });

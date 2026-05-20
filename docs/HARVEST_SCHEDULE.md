@@ -5,7 +5,7 @@ Harvest scheduling is part of the garden operating system, not a separate tracke
 ## Current Prototype
 
 - Plant knowledge includes mock days-to-harvest style rules through `gardenPlanningRules`.
-- Today has a Care Schedule / Harvest toggle.
+- Harvest schedule lives outside Home so Home can stay focused on weather and immediate actions.
 - Plant detail shows harvest timing for edible plants.
 - Harvest can be logged from plant detail as a completed task.
 

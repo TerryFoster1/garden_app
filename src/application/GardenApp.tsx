@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, BackHandler, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { mockGardenRepository } from "../data/mockGardenRepository";
@@ -19,9 +19,10 @@ import { TaskCalendarScreen } from "../features/tasks/TaskCalendarScreen";
 import { TodayScreen } from "../features/today/TodayScreen";
 import { WeatherAlertsScreen } from "../features/weather/WeatherAlertsScreen";
 import { AddPlantDraft } from "../features/add-plant/types";
-import { CareTask, GardenHomeModel, PlantInstance, PlantSpecies } from "../domain";
+import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies } from "../domain";
 import { loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
-import { colors, spacing, typography } from "../theme/tokens";
+import { weatherProvider } from "../services/weather/weatherProvider";
+import { colors, radii, spacing, typography } from "../theme/tokens";
 
 type OverlayScreen =
   | "landing"
@@ -37,6 +38,7 @@ type OverlayScreen =
   | null;
 
 export function GardenApp() {
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState<GardenTabKey>("home");
   const [overlay, setOverlay] = useState<OverlayScreen>("landing");
   const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export function GardenApp() {
     model.plantInstances.find((plant) => plant.id === selectedPlantId) ??
     model.plantInstances.find((plant) => plant.id === lastAddedPlantId) ??
     model.plantInstances[0];
+  const isDesktopWeb = Platform.OS === "web" && width >= 900;
 
   useEffect(() => {
     let isMounted = true;
@@ -61,7 +64,7 @@ export function GardenApp() {
     loadPersistedGardenModel()
       .then((savedModel) => {
         if (isMounted && savedModel) {
-          setModel(savedModel);
+          setModel(sanitizeLegacyProfile(savedModel));
         }
       })
       .finally(() => {
@@ -84,6 +87,40 @@ export function GardenApp() {
       // Local persistence should never block field use.
     });
   }, [isHydrated, model]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    let isMounted = true;
+
+    Promise.all([
+      weatherProvider.getCurrent(model.user.latitude, model.user.longitude),
+      weatherProvider.getAlerts(model.user.latitude, model.user.longitude)
+    ])
+      .then(([weather, weatherAlerts]) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setModel((current) => ({
+          ...current,
+          weather: {
+            ...weather,
+            locationLabel: current.user.locationLabel || weather.locationLabel
+          },
+          weatherAlerts: weatherAlerts.length > 0 ? weatherAlerts : current.weatherAlerts
+        }));
+      })
+      .catch(() => {
+        // Keep the last local weather snapshot if the provider is unavailable.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isHydrated, model.user.latitude, model.user.longitude]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -188,6 +225,22 @@ export function GardenApp() {
     }));
   }
 
+  function handleUpdateProfile(updates: { name: string; locationLabel: string; notificationPreferences: NotificationPreference[] }) {
+    setModel((current) => ({
+      ...current,
+      user: {
+        ...current.user,
+        name: updates.name,
+        locationLabel: updates.locationLabel
+      },
+      weather: {
+        ...current.weather,
+        locationLabel: updates.locationLabel
+      },
+      notificationPreferences: updates.notificationPreferences
+    }));
+  }
+
   function handlePlantAdded(draft: AddPlantDraft) {
     const now = Date.now();
     const normalizedName = draft.plantName.toLowerCase();
@@ -195,27 +248,33 @@ export function GardenApp() {
     const speciesId = existingSpecies?.id ?? `species-user-${normalizedName.replace(/[^a-z0-9]+/g, "-")}-${now}`;
     const nickname = draft.variety ? `${draft.variety} ${draft.plantName}` : draft.plantName;
     const plantId = `plant-user-${now}`;
+    const initialPhotoId = draft.photoUri ? `photo-${plantId}-${now}` : undefined;
 
     const newSpecies: PlantSpecies | null = existingSpecies
       ? null
       : {
           id: speciesId,
           commonName: draft.plantName,
+          scientificName: draft.scientificName,
           family: "User confirmed",
-          careSummary: draft.identification?.careSummary ?? "User-added plant. Build the care profile as observations are collected.",
-          preferredSun: draft.identification?.lightNeeds.toLowerCase().includes("part") ? ["part-sun"] : ["full-sun"],
-          waterNeeds: draft.identification?.wateringNeeds ?? "moderate",
-          feedingNeeds: draft.identification?.feedingNotes.toLowerCase().includes("heavy") ? "heavy" : "moderate",
+          careSummary: draft.careSummary ?? draft.identification?.careSummary ?? "User-added plant. Build the care profile as observations are collected.",
+          preferredSun: inferSunBands(draft.lightNeeds ?? draft.identification?.lightNeeds),
+          waterNeeds: inferWaterNeeds(draft.waterNeeds ?? draft.identification?.wateringNeeds),
+          feedingNeeds: inferFeedingNeeds(draft.feedingNeeds ?? draft.identification?.feedingNotes),
           frostSensitive: Boolean(draft.identification?.warnings.some((warning) => warning.toLowerCase().includes("cold") || warning.toLowerCase().includes("frost")))
+            || (draft.category === "vegetable" && !(draft.plantName.toLowerCase().includes("garlic") || draft.plantName.toLowerCase().includes("kale"))),
+          harvestWindow: draft.daysToHarvest,
+          companionNotes: draft.companionNotes
         };
 
-    const source: PlantInstance["source"] = draft.stage === "seed" ? "seed" : draft.stage === "seedling" || draft.stage === "transplant" ? "transplant" : "unknown";
+    const source: PlantInstance["source"] = draft.stage === "seed" ? "seed" : draft.stage === "seedling" || draft.stage === "young" || draft.stage === "transplant" ? "transplant" : "unknown";
 
     const newPlant: PlantInstance = {
       id: plantId,
       speciesId,
       gardenId: draft.placement.gardenId,
       bedId: draft.placement.bedId,
+      currentProfilePhotoId: initialPhotoId,
       nickname,
       locationLabel: draft.placement.locationLabel,
       locationType: draft.placement.locationType,
@@ -227,11 +286,37 @@ export function GardenApp() {
     };
 
     const newTasks = createInitialCareTasks(newPlant, newSpecies ?? existingSpecies, draft);
+    const initialPhoto: PlantPhoto | null = draft.photoUri
+      ? {
+          id: initialPhotoId as string,
+          plantInstanceId: plantId,
+          uri: draft.photoUri,
+          takenAt: new Date(now).toISOString(),
+          purpose: "identify",
+          note: "First photo used while adding this plant.",
+          growthStage: draft.stage
+        }
+      : null;
 
     setModel((current) => ({
       ...current,
       species: newSpecies ? [newSpecies, ...current.species] : current.species,
       plantInstances: [newPlant, ...current.plantInstances],
+      plantPhotos: initialPhoto ? [initialPhoto, ...(current.plantPhotos ?? [])] : current.plantPhotos,
+      growthSnapshots: initialPhoto
+        ? [
+            {
+              id: `snapshot-${initialPhoto.id}`,
+              plantInstanceId: plantId,
+              photoId: initialPhoto.id,
+              recordedAt: initialPhoto.takenAt,
+              stage: draft.stage,
+              note: "Initial plant photo captured during add flow.",
+              source: "photo-update"
+            },
+            ...(current.growthSnapshots ?? [])
+          ]
+        : current.growthSnapshots,
       tasks: [...newTasks, ...current.tasks]
     }));
 
@@ -335,6 +420,43 @@ export function GardenApp() {
     }));
   }
 
+  function handleAddPlantPhoto(plantId: string, uri: string, purpose: PlantPhoto["purpose"] = "growth-log", note = "Photo update") {
+    const plant = model.plantInstances.find((item) => item.id === plantId);
+    if (!plant || plant.id.startsWith("knowledge-")) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const photoId = `photo-${plantId}-${Date.now()}`;
+    const photo: PlantPhoto = {
+      id: photoId,
+      plantInstanceId: plantId,
+      uri,
+      takenAt: now,
+      purpose,
+      note,
+      growthStage: plant.stage
+    };
+
+    setModel((current) => ({
+      ...current,
+      plantPhotos: [photo, ...(current.plantPhotos ?? [])],
+      growthSnapshots: [
+        {
+          id: `snapshot-${photoId}`,
+          plantInstanceId: plantId,
+          photoId,
+          recordedAt: now,
+          stage: plant.stage,
+          note,
+          source: purpose === "diagnose" ? "diagnosis" : "photo-update"
+        },
+        ...(current.growthSnapshots ?? [])
+      ],
+      plantInstances: current.plantInstances.map((item) => (item.id === plantId ? { ...item, currentProfilePhotoId: photoId } : item))
+    }));
+  }
+
   function handleUpdateBed(bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) {
     setModel((current) => ({
       ...current,
@@ -414,6 +536,7 @@ export function GardenApp() {
           onRenamePlant={handleRenamePlant}
           onMarkWatered={handleMarkWatered}
           onHarvestPlant={handleHarvestPlant}
+          onAddPhoto={handleAddPlantPhoto}
         />
       );
     }
@@ -458,14 +581,9 @@ export function GardenApp() {
       return (
         <TodayScreen
           model={model}
-          onOpenCalendar={() => setOverlay("calendar")}
-          onOpenSettings={() => setActiveTab("profile")}
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
           onOpenPlant={handleOpenPlant}
-          onOpenScan={handleOpenScan}
           onAddPlant={() => handleOpenAddPlant(null)}
-          onAddGarden={() => setOverlay("gardenSetup")}
-          onOpenGarden={() => setActiveTab("garden")}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
         />
@@ -487,14 +605,13 @@ export function GardenApp() {
       return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} onDiagnoseByPhoto={handleOpenScan} />;
     }
 
-    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} />;
+    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} onUpdateProfile={handleUpdateProfile} />;
   }
 
-  if (overlay === "landing") {
-    return <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />;
-  }
-
-  return (
+  const appContent =
+    overlay === "landing" ? (
+      <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />
+    ) : (
     <View style={styles.app}>
       <ScrollView contentContainerStyle={styles.screen}>{renderMainScreen()}</ScrollView>
       {overlay === null ? (
@@ -517,6 +634,53 @@ export function GardenApp() {
           })}
         </View>
       ) : null}
+    </View>
+  );
+
+  if (isDesktopWeb) {
+    return (
+      <View style={styles.desktopRoot}>
+        <View style={styles.desktopPanel}>
+          <View style={styles.desktopBrandMark}>
+            <Ionicons name="leaf" size={42} color={colors.sage} />
+          </View>
+          <Text style={styles.desktopName}>Pattypan</Text>
+          <Text style={styles.desktopTagline}>Your Heirloom Secret</Text>
+          <Text style={styles.desktopCopy}>Pattypan.ca works in the browser, but the garden companion is best on your phone: camera capture, outdoor checks, notifications, and one-handed task flow.</Text>
+          <View style={styles.qrCard}>
+            <QrPlaceholder />
+            <View style={styles.qrCopy}>
+              <Text style={styles.qrTitle}>Open on mobile</Text>
+              <Text style={styles.qrText}>QR and app store links are placeholders until native releases are ready.</Text>
+            </View>
+          </View>
+          <View style={styles.storeRow}>
+            <View style={styles.storePill}>
+              <Ionicons name="logo-apple" size={18} color={colors.leafDeep} />
+              <Text style={styles.storeText}>App Store soon</Text>
+            </View>
+            <View style={styles.storePill}>
+              <Ionicons name="logo-google-playstore" size={18} color={colors.leafDeep} />
+              <Text style={styles.storeText}>Google Play soon</Text>
+            </View>
+          </View>
+          <Text style={styles.browserText}>Continue in browser</Text>
+        </View>
+        <View style={styles.phoneFrame}>{appContent}</View>
+      </View>
+    );
+  }
+
+  return appContent;
+}
+
+function QrPlaceholder() {
+  const cells = Array.from({ length: 49 }, (_, index) => index);
+  return (
+    <View style={styles.qrGrid}>
+      {cells.map((index) => (
+        <View key={index} style={[styles.qrCell, (index % 2 === 0 || index % 7 === 0 || index === 10 || index === 38) && styles.qrCellDark]} />
+      ))}
     </View>
   );
 }
@@ -566,7 +730,40 @@ function createInitialCareTasks(plant: PlantInstance, species: PlantSpecies | un
     });
   }
 
-  if (species?.frostSensitive || draft.stage === "seedling" || draft.stage === "transplant") {
+  if (draft.stage === "seed") {
+    const germinationCheck = new Date(now + 7 * 24 * 60 * 60 * 1000);
+    germinationCheck.setHours(9, 0, 0, 0);
+
+    const transplantCheck = new Date(now + 28 * 24 * 60 * 60 * 1000);
+    transplantCheck.setHours(9, 0, 0, 0);
+
+    tasks.push(
+      {
+        id: `task-${plant.id}-germination`,
+        plantInstanceId: plant.id,
+        gardenBedId: plant.bedId,
+        type: "hardening-off",
+        title: `Check germination for ${plant.nickname}`,
+        dueAt: germinationCheck.toISOString(),
+        priority: "normal",
+        status: "scheduled",
+        reason: "Seed-start placeholder. Future seed workflow will use crop-specific germination windows, tray location, warmth, and moisture."
+      },
+      {
+        id: `task-${plant.id}-transplant-window`,
+        plantInstanceId: plant.id,
+        gardenBedId: plant.bedId,
+        type: "hardening-off",
+        title: `Estimate transplant timing for ${plant.nickname}`,
+        dueAt: transplantCheck.toISOString(),
+        priority: "normal",
+        status: "needs-confirmation",
+        reason: "Seed-start placeholder. Future rules will combine seed date, crop type, frost risk, hardening off, and local weather."
+      }
+    );
+  }
+
+  if (species?.frostSensitive || draft.stage === "seedling" || draft.stage === "young" || draft.stage === "transplant") {
     tasks.push({
       id: `task-${plant.id}-weather`,
       plantInstanceId: plant.id,
@@ -583,10 +780,184 @@ function createInitialCareTasks(plant: PlantInstance, species: PlantSpecies | un
   return tasks;
 }
 
+function inferSunBands(value?: string): PlantSpecies["preferredSun"] {
+  const normalized = value?.toLowerCase() ?? "";
+  if (normalized.includes("shade") && !normalized.includes("sun")) {
+    return ["shade", "part-shade"];
+  }
+  if (normalized.includes("part")) {
+    return ["part-sun", "part-shade"];
+  }
+  if (normalized.includes("indirect") || normalized.includes("low")) {
+    return ["part-shade", "shade"];
+  }
+  return ["full-sun"];
+}
+
+function inferWaterNeeds(value?: string): PlantSpecies["waterNeeds"] {
+  const normalized = value?.toLowerCase() ?? "";
+  if (normalized.includes("high") || normalized.includes("consistent") || normalized.includes("moist")) {
+    return "high";
+  }
+  if (normalized.includes("low") || normalized.includes("dry")) {
+    return "low";
+  }
+  return "moderate";
+}
+
+function inferFeedingNeeds(value?: string): PlantSpecies["feedingNeeds"] {
+  const normalized = value?.toLowerCase() ?? "";
+  if (normalized.includes("heavy")) {
+    return "heavy";
+  }
+  if (normalized.includes("light")) {
+    return "light";
+  }
+  return "moderate";
+}
+
+function sanitizeLegacyProfile(model: GardenHomeModel): GardenHomeModel {
+  const staleMockNames = new Set(["kathryn", "kate"]);
+  if (!staleMockNames.has(model.user.name.trim().toLowerCase())) {
+    return model;
+  }
+
+  return {
+    ...model,
+    user: {
+      ...model.user,
+      name: ""
+    }
+  };
+}
+
 const styles = StyleSheet.create({
   app: {
     flex: 1,
     backgroundColor: colors.background
+  },
+  desktopRoot: {
+    flex: 1,
+    minHeight: "100%",
+    backgroundColor: "#132719",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "stretch",
+    padding: spacing.xl,
+    gap: spacing.xxl
+  },
+  desktopPanel: {
+    flex: 1,
+    maxWidth: 520,
+    justifyContent: "center",
+    gap: spacing.lg
+  },
+  desktopBrandMark: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(255,253,248,0.12)",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  desktopName: {
+    color: colors.surface,
+    fontSize: 64,
+    fontWeight: "900",
+    lineHeight: 70
+  },
+  desktopTagline: {
+    color: colors.sage,
+    fontSize: typography.title,
+    fontWeight: "900"
+  },
+  desktopCopy: {
+    color: "rgba(255,253,248,0.76)",
+    fontSize: typography.body,
+    lineHeight: 24,
+    fontWeight: "700",
+    maxWidth: 440
+  },
+  qrCard: {
+    maxWidth: 430,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,253,248,0.92)",
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  qrGrid: {
+    width: 92,
+    height: 92,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    padding: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 3
+  },
+  qrCell: {
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: "transparent"
+  },
+  qrCellDark: {
+    backgroundColor: colors.leafDeep
+  },
+  qrCopy: {
+    flex: 1
+  },
+  qrTitle: {
+    color: colors.leafDeep,
+    fontSize: typography.body,
+    fontWeight: "900"
+  },
+  qrText: {
+    color: colors.textMuted,
+    fontSize: typography.small,
+    lineHeight: 19,
+    fontWeight: "700",
+    marginTop: spacing.xs
+  },
+  storeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  storePill: {
+    minHeight: 44,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md
+  },
+  storeText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  browserText: {
+    color: "rgba(255,253,248,0.68)",
+    fontSize: typography.small,
+    fontWeight: "800"
+  },
+  phoneFrame: {
+    width: 430,
+    maxHeight: 920,
+    flex: 1,
+    borderRadius: 42,
+    overflow: "hidden",
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: "rgba(255,253,248,0.18)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.32,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 18 }
   },
   screen: {
     padding: spacing.lg,

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { DimensionValue, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { GardenBed, GardenHomeModel, PlantInstance, PlantSpecies } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
+import { getLatestPlantPhoto } from "../../services/plantPhotos";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 import { GardenPlacement } from "./LocationManagementScreen";
 
@@ -14,19 +15,17 @@ type MyGardenScreenProps = {
   onOpenPlant: (plantId: string) => void;
 };
 
-type GardenTab = "outdoor" | "containers" | "indoor";
+type GardenView = "outdoor" | "indoor";
 
-const zoneTabs: Array<{ id: GardenTab; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
-  { id: "outdoor", label: "Outdoor Beds", icon: "flower-outline" },
-  { id: "containers", label: "Pots & Containers", icon: "file-tray-outline" },
-  { id: "indoor", label: "Indoor Plants", icon: "home-outline" }
+const tabs: Array<{ id: GardenView; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
+  { id: "outdoor", label: "Outdoor", icon: "sunny-outline" },
+  { id: "indoor", label: "Indoor", icon: "home-outline" }
 ];
 
 export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPlant }: MyGardenScreenProps) {
-  const [activeZone, setActiveZone] = useState<GardenTab>("outdoor");
+  const [activeView, setActiveView] = useState<GardenView>("outdoor");
   const plantsByBed = useMemo(() => groupPlantsByBed(model.plantInstances), [model.plantInstances]);
   const outdoorBeds = model.beds.filter((bed) => bed.locationType !== "container");
-  const containerPlants = model.plantInstances.filter((plant) => plant.locationType === "container");
   const indoorPlants = model.plantInstances.filter((plant) => plant.locationType === "indoor-pot");
 
   return (
@@ -36,114 +35,110 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
           <Text style={styles.title}>My Garden</Text>
           <Text style={styles.subtitle}>Your living spaces</Text>
         </View>
-        <View style={styles.actionStack}>
-          <TouchableOpacity accessibilityRole="button" style={styles.addPlantButton} onPress={onAddPlant}>
-            <Ionicons name="add" size={24} color={colors.white} />
-            <Text style={styles.addPlantText}>Add Plant</Text>
-          </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" style={styles.addBedButton} onPress={() => onOpenGardenSetup()}>
-            <Ionicons name="add" size={24} color={colors.leafDeep} />
-            <Text style={styles.addBedText}>Add Bed</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity accessibilityRole="button" style={styles.addButton} onPress={activeView === "outdoor" ? () => onOpenGardenSetup() : onAddPlant}>
+          <Ionicons name="add" size={22} color={colors.white} />
+          <Text style={styles.addButtonText}>{activeView === "outdoor" ? "Add Bed" : "Add Plant"}</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.segmentedTabs}>
-        {zoneTabs.map((tab) => (
-          <TouchableOpacity key={tab.id} accessibilityRole="button" style={[styles.segmentTab, activeZone === tab.id && styles.segmentTabActive]} onPress={() => setActiveZone(tab.id)}>
-            <Ionicons name={tab.icon} size={22} color={activeZone === tab.id ? colors.white : colors.leafDeep} />
-            <Text style={[styles.segmentTabText, activeZone === tab.id && styles.segmentTabTextActive]}>{tab.label}</Text>
+        {tabs.map((tab) => (
+          <TouchableOpacity key={tab.id} accessibilityRole="button" style={[styles.segmentTab, activeView === tab.id && styles.segmentTabActive]} onPress={() => setActiveView(tab.id)}>
+            <Ionicons name={tab.icon} size={21} color={activeView === tab.id ? colors.white : colors.leafDeep} />
+            <Text style={[styles.segmentTabText, activeView === tab.id && styles.segmentTabTextActive]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {activeZone === "outdoor" ? (
-        <View style={styles.bedGrid}>
+      {activeView === "outdoor" ? (
+        <View style={styles.list}>
           {outdoorBeds.map((bed, index) => (
-            <BedCard
-              key={bed.id}
-              bed={bed}
-              plants={plantsByBed[bed.id] ?? []}
-              species={model.species}
-              index={index}
-              onManage={() => onOpenGardenSetup(toPlacement(bed))}
-              onOpenPlant={onOpenPlant}
-            />
+            <BedOverviewCard key={bed.id} bed={bed} plants={plantsByBed[bed.id] ?? []} species={model.species} index={index} onPress={() => onOpenGardenSetup(toPlacement(bed))} />
           ))}
         </View>
-      ) : null}
-
-      {activeZone === "containers" ? <PlantRail title="Pots & Containers" plants={containerPlants} species={model.species} onOpenPlant={onOpenPlant} /> : null}
-      {activeZone === "indoor" ? <PlantRail title="Indoor Plants" plants={indoorPlants} species={model.species} onOpenPlant={onOpenPlant} /> : null}
-
-      <View style={styles.tipCard}>
-        <Ionicons name="leaf" size={30} color={colors.leafDeep} />
-        <Text style={styles.tipText}>Tip: Basil grows great with tomatoes and helps repel pests naturally.</Text>
-      </View>
+      ) : (
+        <View style={styles.list}>
+          {indoorPlants.map((plant) => (
+            <IndoorPlantCard key={plant.id} plant={plant} model={model} onPress={() => onOpenPlant(plant.id)} />
+          ))}
+          {indoorPlants.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="leaf-outline" size={28} color={colors.leafDeep} />
+              <Text style={styles.emptyTitle}>No indoor plants yet</Text>
+              <Text style={styles.emptyText}>Add a plant when you are ready to track a shelf, window, or room.</Text>
+            </View>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }
 
-function BedCard({ bed, plants, species, index, onManage, onOpenPlant }: { bed: GardenBed; plants: PlantInstance[]; species: PlantSpecies[]; index: number; onManage: () => void; onOpenPlant: (plantId: string) => void }) {
-  const state = getBedState(index);
+function BedOverviewCard({ bed, plants, species, index, onPress }: { bed: GardenBed; plants: PlantInstance[]; species: PlantSpecies[]; index: number; onPress: () => void }) {
+  const status = getBedStatus(index, plants);
+  const plantNames = plants
+    .slice(0, 4)
+    .map((plant) => getPlantKnowledge(species.find((item) => item.id === plant.speciesId), plant.nickname).commonName)
+    .filter(Boolean);
+  const visibleList = plantNames.length > 0 ? plantNames.join(", ") : "No plants yet";
+  const overflowCount = Math.max(0, plants.length - 4);
 
   return (
-    <TouchableOpacity accessibilityRole="button" style={styles.bedCard} onPress={onManage}>
-      <View style={styles.bedTop}>
-        <View>
-          <Text style={styles.bedName}>{bed.name}</Text>
-          <View style={styles.bedStateRow}>
-            <Text style={[styles.bedState, { color: state.color }]}>{state.label}</Text>
-            <Ionicons name={state.icon} size={20} color={state.color} />
-            <Text style={styles.sunText}>{state.sun}</Text>
-          </View>
+    <TouchableOpacity accessibilityRole="button" style={styles.bedCard} onPress={onPress}>
+      <View style={styles.bedTopRow}>
+        <View style={styles.bedIcon}>
+          <Ionicons name="flower-outline" size={23} color={colors.leafDeep} />
         </View>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Manage ${bed.name}`} onPress={onManage}>
-          <Ionicons name="ellipsis-vertical" size={24} color={colors.textMuted} />
-        </TouchableOpacity>
+        <View style={styles.cardCopy}>
+          <Text style={styles.cardTitle}>{bed.name}</Text>
+          <Text style={styles.cardMeta}>{bed.lengthFeet}ft x {bed.widthFeet}ft</Text>
+        </View>
+        <View style={[styles.statusPill, { backgroundColor: status.background }]}>
+          <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+        </View>
       </View>
 
-      <View style={styles.bedVisual}>
-        <View style={styles.gridLineVertical} />
-        <View style={styles.gridLineHorizontal} />
-        {plants.slice(0, 6).map((plant, plantIndex) => {
-          const point = plant.positionXPercent !== undefined && plant.positionYPercent !== undefined ? { left: `${plant.positionXPercent}%` as DimensionValue, top: `${plant.positionYPercent}%` as DimensionValue } : getPlantPoint(plantIndex);
-          const knowledge = getPlantKnowledge(species.find((item) => item.id === plant.speciesId), plant.nickname);
-          return (
-            <TouchableOpacity key={plant.id} accessibilityRole="button" style={[styles.plantMarker, plant.healthStatus === "watch" && styles.plantMarkerWatch, { left: point.left, top: point.top }]} onPress={() => onOpenPlant(plant.id)}>
-              <Text style={styles.plantMarkerText}>{knowledge.visual}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      <Text numberOfLines={2} style={styles.plantList}>{visibleList}{overflowCount > 0 ? ` + ${overflowCount} more` : ""}</Text>
 
-      <View style={styles.bedFooter}>
-        <Text style={styles.bedFooterText}>{plants.length} plants</Text>
-        <Text style={styles.bedFooterText}>{bed.lengthFeet}ft x {bed.widthFeet}ft</Text>
+      <View style={styles.bedBottomRow}>
+        <View style={styles.tinyPreview}>
+          {plants.slice(0, 5).map((plant, plantIndex) => (
+            <View key={plant.id} style={[styles.tinyPlantDot, plant.healthStatus === "watch" && styles.tinyPlantDotWatch, { marginLeft: plantIndex === 0 ? 0 : -5 }]} />
+          ))}
+        </View>
+        <Text style={styles.openText}>Open bed</Text>
+        <Ionicons name="chevron-forward" size={19} color={colors.textMuted} />
       </View>
     </TouchableOpacity>
   );
 }
 
-function PlantRail({ title, plants, species, onOpenPlant }: { title: string; plants: PlantInstance[]; species: PlantSpecies[]; onOpenPlant: (plantId: string) => void }) {
+function IndoorPlantCard({ plant, model, onPress }: { plant: PlantInstance; model: GardenHomeModel; onPress: () => void }) {
+  const species = model.species.find((item) => item.id === plant.speciesId);
+  const knowledge = getPlantKnowledge(species, plant.nickname);
+  const photo = getLatestPlantPhoto(model, plant);
+  const statusColor = plant.healthStatus === "watch" || plant.healthStatus === "stressed" ? colors.coral : colors.leaf;
+
   return (
-    <View style={styles.railSection}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.plantRail}>
-        {plants.map((plant) => {
-          const knowledge = getPlantKnowledge(species.find((item) => item.id === plant.speciesId), plant.nickname);
-          return (
-            <TouchableOpacity key={plant.id} accessibilityRole="button" style={styles.plantTile} onPress={() => onOpenPlant(plant.id)}>
-              <View style={styles.plantTileVisual}>
-                <Text style={styles.plantTileGlyph}>{knowledge.visual}</Text>
-              </View>
-              <Text numberOfLines={2} style={styles.plantTileTitle}>{plant.nickname}</Text>
-              <Text style={styles.plantTileMeta}>{plant.healthStatus}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </View>
+    <TouchableOpacity accessibilityRole="button" style={styles.plantCard} onPress={onPress}>
+      {photo ? (
+        <Image source={{ uri: photo.uri }} style={styles.plantPhoto} />
+      ) : (
+        <View style={styles.plantFallback}>
+          <Text style={styles.plantFallbackText}>{knowledge.visual}</Text>
+        </View>
+      )}
+      <View style={styles.cardCopy}>
+        <Text style={styles.cardTitle}>{plant.nickname}</Text>
+        <Text style={styles.cardMeta}>{knowledge.commonName}</Text>
+        <Text numberOfLines={1} style={styles.locationText}>{plant.locationLabel}</Text>
+      </View>
+      <View style={styles.plantStatus}>
+        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+        <Text style={[styles.statusText, { color: statusColor }]}>{plant.healthStatus}</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -171,26 +166,18 @@ function groupPlantsByBed(plants: PlantInstance[]) {
   }, {});
 }
 
-function getBedState(index: number) {
-  const states = [
-    { label: "Thriving", color: colors.leaf, icon: "sunny-outline" as const, sun: "7h sun" },
-    { label: "Warm", color: "#d99616", icon: "thermometer-outline" as const, sun: "6h sun" },
-    { label: "Part Shade", color: "#668fc6", icon: "partly-sunny-outline" as const, sun: "4h sun" },
-    { label: "Sunny", color: "#e7a51a", icon: "sunny-outline" as const, sun: "8h sun" }
-  ];
-  return states[index % states.length];
-}
+function getBedStatus(index: number, plants: PlantInstance[]) {
+  if (plants.some((plant) => plant.healthStatus === "stressed" || plant.healthStatus === "watch")) {
+    return { label: "Watch", color: colors.coral, background: "#fff1ea" };
+  }
 
-function getPlantPoint(index: number): { left: DimensionValue; top: DimensionValue } {
-  const points: Array<{ left: DimensionValue; top: DimensionValue }> = [
-    { left: "18%", top: "20%" },
-    { left: "58%", top: "20%" },
-    { left: "20%", top: "58%" },
-    { left: "60%", top: "58%" },
-    { left: "38%", top: "38%" },
-    { left: "76%", top: "42%" }
+  const states = [
+    { label: "Steady", color: colors.leaf, background: "#eef6e9" },
+    { label: "Warm", color: "#d99616", background: "#fff5d8" },
+    { label: "Part shade", color: "#668fc6", background: "#edf4ff" }
   ];
-  return points[index % points.length];
+
+  return states[index % states.length];
 }
 
 const styles = StyleSheet.create({
@@ -199,8 +186,8 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: spacing.md
   },
   headerCopy: {
@@ -217,42 +204,23 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: "700"
   },
-  actionStack: {
-    width: 168,
-    gap: spacing.sm
-  },
-  addPlantButton: {
-    minHeight: 58,
+  addButton: {
+    minHeight: 52,
     borderRadius: radii.pill,
     backgroundColor: colors.leafDeep,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.sm
+    gap: spacing.xs
   },
-  addPlantText: {
+  addButtonText: {
     color: colors.white,
-    fontSize: typography.body,
-    fontWeight: "900"
-  },
-  addBedButton: {
-    minHeight: 54,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surfaceWarm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm
-  },
-  addBedText: {
-    color: colors.leafDeep,
-    fontSize: typography.body,
+    fontSize: typography.small,
     fontWeight: "900"
   },
   segmentedTabs: {
-    minHeight: 64,
+    minHeight: 62,
     borderRadius: 26,
     borderWidth: 1,
     borderColor: colors.border,
@@ -264,7 +232,7 @@ const styles = StyleSheet.create({
   },
   segmentTab: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 50,
     borderRadius: 22,
     flexDirection: "row",
     alignItems: "center",
@@ -276,168 +244,162 @@ const styles = StyleSheet.create({
   },
   segmentTabText: {
     color: colors.textMuted,
-    fontSize: typography.caption,
+    fontSize: typography.body,
     fontWeight: "900"
   },
   segmentTabTextActive: {
     color: colors.white
   },
-  bedGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  list: {
     gap: spacing.md
   },
   bedCard: {
-    width: "47.8%",
-    minHeight: 252,
-    borderRadius: 26,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: spacing.md,
-    justifyContent: "space-between"
+    padding: spacing.lg,
+    gap: spacing.md
   },
-  bedTop: {
+  bedTopRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.sm
+    alignItems: "center",
+    gap: spacing.md
   },
-  bedName: {
-    color: colors.leafDeep,
+  bedIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#eef6e9",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  cardCopy: {
+    flex: 1
+  },
+  cardTitle: {
+    color: colors.text,
     fontSize: typography.body,
-    fontWeight: "900"
+    fontWeight: "900",
+    lineHeight: 21
   },
-  bedStateRow: {
+  cardMeta: {
+    color: colors.textMuted,
+    fontSize: typography.small,
+    fontWeight: "800",
+    marginTop: 2
+  },
+  statusPill: {
+    minHeight: 32,
+    borderRadius: radii.pill,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    marginTop: spacing.xs
+    paddingHorizontal: spacing.sm
   },
-  bedState: {
-    fontSize: typography.small,
-    fontWeight: "900"
+  statusDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5
   },
-  sunText: {
-    color: colors.textMuted,
-    fontSize: typography.small,
-    fontWeight: "700"
-  },
-  bedVisual: {
-    height: 126,
-    borderRadius: 20,
-    backgroundColor: "#7a5a3e",
-    borderWidth: 5,
-    borderColor: "#b8895d",
-    overflow: "hidden",
-    position: "relative",
-    marginVertical: spacing.sm
-  },
-  gridLineVertical: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: "50%",
-    width: 1,
-    backgroundColor: "rgba(255,255,255,0.24)"
-  },
-  gridLineHorizontal: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: "50%",
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.24)"
-  },
-  plantMarker: {
-    position: "absolute",
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.leaf,
-    borderWidth: 2,
-    borderColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  plantMarkerWatch: {
-    backgroundColor: colors.coral
-  },
-  plantMarkerText: {
-    color: colors.white,
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  bedFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  bedFooterText: {
-    color: colors.textMuted,
-    fontSize: typography.small,
-    fontWeight: "800"
-  },
-  railSection: {
-    gap: spacing.md
-  },
-  sectionTitle: {
-    color: colors.leafDeep,
-    fontSize: typography.section,
-    fontWeight: "900"
-  },
-  plantRail: {
-    gap: spacing.md,
-    paddingRight: spacing.xl
-  },
-  plantTile: {
-    width: 156,
-    minHeight: 188,
-    borderRadius: 28,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    justifyContent: "space-between"
-  },
-  plantTileVisual: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: colors.sage,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  plantTileGlyph: {
-    color: colors.white,
-    fontSize: typography.title,
-    fontWeight: "900"
-  },
-  plantTileTitle: {
-    color: colors.text,
-    fontSize: typography.body,
-    fontWeight: "900"
-  },
-  plantTileMeta: {
-    color: colors.leaf,
+  statusText: {
     fontSize: typography.caption,
     fontWeight: "900",
     textTransform: "uppercase"
   },
-  tipCard: {
-    minHeight: 78,
-    borderRadius: 24,
-    backgroundColor: "#eef6e9",
+  plantList: {
+    color: colors.text,
+    fontSize: typography.small,
+    lineHeight: 20,
+    fontWeight: "800"
+  },
+  bedBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  tinyPreview: {
+    flex: 1,
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  tinyPlantDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.leaf,
+    borderWidth: 2,
+    borderColor: colors.surface
+  },
+  tinyPlantDotWatch: {
+    backgroundColor: colors.coral
+  },
+  openText: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  plantCard: {
+    minHeight: 106,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: "#b6c6a5",
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     padding: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md
   },
-  tipText: {
-    flex: 1,
-    color: colors.leafDeep,
+  plantPhoto: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: colors.surfaceWarm
+  },
+  plantFallback: {
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    backgroundColor: colors.sage,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  plantFallbackText: {
+    color: colors.white,
+    fontSize: typography.title,
+    fontWeight: "900"
+  },
+  locationText: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    marginTop: spacing.xs
+  },
+  plantStatus: {
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  emptyState: {
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  emptyTitle: {
+    color: colors.text,
     fontSize: typography.body,
-    lineHeight: 22,
-    fontWeight: "800"
+    fontWeight: "900"
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: typography.small,
+    lineHeight: 20,
+    textAlign: "center",
+    fontWeight: "700"
   }
 });

@@ -1,6 +1,6 @@
 # Mobile Experience
 
-Garden App is mobile-only. It is designed for iPhone and Android, not desktop web.
+Pattypan is mobile-first with a polished web companion at Pattypan.ca. It is designed first for iPhone and Android, and the phone remains the primary interaction model.
 
 ## Field Conditions
 
@@ -26,6 +26,18 @@ Avoid:
 - Desktop dashboard composition.
 - Equal-priority card stacks.
 
+## Pattypan.ca Desktop Companion
+
+Desktop web should not stretch the phone UI into a dashboard. On wide screens, center the app in a portrait mobile container and use ambient side space for brand, QR/download placeholders, and gentle best-on-mobile guidance.
+
+Desktop users can continue in browser, but the app should make mobile feel naturally better for:
+
+- Taking plant photos.
+- Diagnosing issues outdoors.
+- Receiving notifications.
+- Completing quick garden tasks one-handed.
+- Updating growth photos in the garden.
+
 ## Navigation Philosophy
 
 Primary bottom navigation:
@@ -39,19 +51,35 @@ Home is the operational hub. My Garden is the spatial management experience. Lib
 
 Scan is still important, but it belongs in Add Plant and Library diagnose flows instead of bottom nav. Planner belongs in My Garden and Bed Detail instead of bottom nav.
 
+## Home Restraint
+
+Home should be usable as a fast morning/outdoor glance on a Samsung S23-class phone. It should not contain duplicate garden management, schedule management, harvest management, or Library actions.
+
+The mobile Home structure is:
+
+1. Atmospheric weather and conditions hero.
+2. Today's action checklist with Done, Later, and Why.
+3. One strong Add Plant CTA.
+
+This leaves the thumb path clear and keeps the fixed bottom nav from competing with redundant action grids.
+
 ## Interaction Size
 
 Primary actions should be thumb-friendly and obvious. Camera actions, task completion, and alert acknowledgement should be usable without precision tapping.
 
 ## Spatial Mobile Surfaces
 
-Mobile garden surfaces should use compact visual maps instead of long lists. A bed preview, plant cluster, or status ring should carry more weight than repeated metadata. Tapping a visual surface should reveal details progressively.
+Mobile garden surfaces should reveal complexity progressively. My Garden is simple navigation. Bed Detail is spatial management. Plant Detail is care intelligence and memory.
+
+The overview should not show every interaction at once. If the user needs spacing, moving, harvesting, companion warnings, or AI optimization, they should tap a bed first.
 
 ## Indoor / Outdoor Model
 
 My Garden is organized around Outdoor and Indoor ownership.
 
 Outdoor includes raised beds, perennial beds, planters, and containers. Indoor includes rooms, shelves, windows, and indoor plant groups. The user should never wonder where a plant lives: every PlantInstance carries a garden/location label and can be moved to another bed, container, or indoor zone.
+
+Indoor overview uses plant cards only. Indoor plants are photo/name/status objects, not bed maps. Outdoor overview uses bed cards only. The bed detail screen owns overhead layout and plant placement.
 
 ## Back Behavior
 

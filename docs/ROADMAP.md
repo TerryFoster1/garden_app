@@ -10,6 +10,8 @@
 - Care rules and sun/weather engine stubs.
 - First Scan/Add Plant vertical slice: camera/library picker, mock identification, confidence language, confirmation/editing, bed/container selection, local plant creation, and starter tasks visible in Today/My Garden.
 - Temporary Expo web preview export with entitlement/subscription service foundation and paywall disabled.
+- Pattypan.ca responsive web shell: centered phone app on desktop, best-on-mobile messaging, QR placeholder, and app-store placeholders.
+- Local plant photo history foundation with latest-photo-as-profile behavior.
 
 ## Phase 2: Real Device Loops
 
@@ -22,6 +24,7 @@
 - Replace mock identification with a real provider behind the existing adapter.
 - Add tap-to-place coordinates and then drag/drop placement within beds.
 - Add editable harvest observations and photo-update reminders.
+- Expand photo update workflow into weekly prompts and plant growth timelines.
 - Add basic auth readiness: email/password, Google login plan, admin email handling, subscription lookup boundary, and saved user garden records.
 
 ## Phase 3: Garden Model + Scheduling
@@ -50,22 +53,24 @@
 - Sun/shade placement optimizer.
 - Companion planting and bed rotation logic.
 - Growth logs and seasonal insights.
+- AI-assisted photo comparison for growth stage, harvest timing, disease pressure, and recovery.
 - Personalized knowledge base.
 
 ## Deployment + Monetization Readiness
 
-- Use Expo web/Vercel only for temporary preview/testing.
+- Host the responsive web version on Pattypan.ca while preserving mobile-first UX.
 - Build production mobile apps with Expo/EAS for iOS App Store and Google Play Store.
 - Keep paywall disabled during the personal-use phase.
 - Preserve an affordable future subscription model without blocking current use.
 - Support admin, lifetime, and comped bypass states before any payment enforcement.
 - Use Stripe as the likely future provider, but do not implement payments until auth and persistence are ready.
 
-## Mobile-Only Product Direction
+## Mobile-First Product Direction
 
-- Do not optimize for desktop layouts.
+- Do not turn desktop into the primary product model.
 - Do not create sidebar admin dashboards or dense tables.
 - Prioritize notifications, task completion, scan flows, Today, and weather/garden alerts.
 - Keep controls large, touch-friendly, portrait-first, and readable outdoors.
 - Minimize typing in garden workflows.
 - Prefer offline-first local interactions with queued sync when possible.
+- Keep Pattypan.ca polished by centering the phone-shaped app and using desktop space for brand/mobile guidance rather than dashboard complexity.

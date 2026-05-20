@@ -1,8 +1,8 @@
 # Spatial Garden UX
 
-My Garden should make the user feel: I am looking at my garden.
+My Garden should make the user feel: I know where to go next.
 
-The screen should not behave like a plant inventory. It should behave like a living spatial surface that helps the user recognize beds, containers, indoor zones, and plant relationships quickly.
+The screen should not behave like a plant inventory or planner. It is an overview and navigation layer.
 
 ## Core Idea
 
@@ -10,36 +10,32 @@ Gardening is physical, environmental, visual, seasonal, and alive. The interface
 
 ## My Garden Structure
 
-1. Garden identity hero.
-2. Primary actions for adding plants and mapping beds.
-3. Zone switching: outdoor beds, pots/containers, indoor.
-4. Mini bed maps.
-5. Selected ecosystem panel.
-6. Plant clusters and status rings.
-7. Bed/zone management for add, move, remove, and plant detail.
+1. Header.
+2. Indoor / Outdoor toggle.
+3. Outdoor: simple bed cards.
+4. Indoor: simple plant cards.
+
+The overview should avoid maps, spacing circles, analytics, ecosystem panels, and management controls.
 
 ## Bed Clusters
 
-Each bed should feel like a small ecosystem, not a record.
+Each bed card is a doorway, not the full ecosystem.
 
-Bed surfaces should show:
+Bed overview cards should show:
 
-- Plant arrangement.
-- Environmental state.
-- Health/watch overlays.
-- Sun, moisture, shade, heat, or humidity cues.
+- Bed name.
+- Dimensions.
+- Concise plant list.
+- Small status.
 - Tap affordance.
 
-## Mini Maps
+## Bed Detail Owns Spatial Complexity
 
-Mini maps are intentionally low fidelity at first. They should establish visual recognition:
+Overhead layouts, spacing circles, companion notes, move/replant actions, harvest actions, and AI Optimize Bed belong in Bed Detail.
 
-- This is Bed 1.
-- These are the plant clusters.
-- This bed is warm/dry/watch/steady.
-- This is where attention belongs.
+My Garden should not cram the planner into overview. It should help the user pick the bed, then the bed screen can show the real spatial tools.
 
-Future versions can add true placement, drag/drop, trellises, shade cloth, spacing rings, and companion overlays.
+Future versions can add true drag/drop, trellises, shade cloth, spacing rings, and companion overlays inside Bed Detail or Planner mode.
 
 ## Bed / Zone Management
 
