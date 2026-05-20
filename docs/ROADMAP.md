@@ -40,12 +40,22 @@
 
 ## Phase 4: Provider Integrations
 
-- Public weather provider.
-- Plant identification provider.
-- AI recommendation provider with rules validation.
+- Move OpenAI, PlantNet, and OpenWeather behind secure server-side proxy routes or Supabase Edge Functions before public beta.
+- Public weather provider with cached weather snapshots and server-side key handling.
+- Plant identification provider with server-side key handling and uploaded photo storage.
+- AI recommendation provider with server-side key handling, usage metering, and rules validation.
 - Personal weather station adapters.
 - Push notifications.
 - Stripe subscription provider behind the entitlement service, with admin, lifetime, and comped bypass states preserved.
+
+## Phase 4.5: Public Beta Backend
+
+- Adopt Supabase as the recommended first backend for auth, Postgres, RLS, storage, and Edge Functions.
+- Replace local prototype auth with real email/password auth.
+- Cloud sync profiles, gardens, beds, plant instances, photos, diagnosis history, tasks, and notification preferences.
+- Add entitlement tables for `free`, `trial`, `premium`, `admin`, `lifetime`, and `comped`.
+- Add Stripe customer/subscription persistence and webhook handling.
+- Keep Pattypan Premium checkout disabled until backend auth and webhook state are proven.
 
 ## Phase 5: Deep Intelligence
 
@@ -63,7 +73,7 @@
 - Keep paywall disabled during the personal-use phase.
 - Preserve an affordable future subscription model without blocking current use.
 - Support admin, lifetime, and comped bypass states before any payment enforcement.
-- Use Stripe as the likely future provider, but do not implement payments until auth and persistence are ready.
+- Use Stripe for Pattypan Premium at `$3.99/month`, but do not launch payments until auth, persistence, secure API proxying, and webhook handling are ready.
 
 ## Mobile-First Product Direction
 

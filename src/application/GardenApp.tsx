@@ -13,6 +13,7 @@ import { GardenPlacement, getGardenPlacements, LocationManagementScreen } from "
 import { MyGardenScreen } from "../features/my-garden/MyGardenScreen";
 import { OnboardingScreen } from "../features/onboarding/OnboardingScreen";
 import { PlantDetailScreen } from "../features/plant-detail/PlantDetailScreen";
+import { PremiumExplanationScreen } from "../features/profile/PremiumExplanationScreen";
 import { ProfileScreen } from "../features/profile/ProfileScreen";
 import { ScanScreen } from "../features/scan/ScanScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -23,6 +24,7 @@ import { AddPlantDraft } from "../features/add-plant/types";
 import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies, SunBand, WeatherAlert } from "../domain";
 import { clearAllLocalAppData, loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
 import { loadLocalSession, LocalSession } from "../services/localAuth";
+import { getBridgeEntitlements, parseEntitlementConfig } from "../services/entitlements/entitlementService";
 import { geocodeLocation, weatherProvider } from "../services/weather/weatherProvider";
 import { colors, radii, spacing, typography } from "../theme/tokens";
 
@@ -38,6 +40,7 @@ type OverlayScreen =
   | "calendar"
   | "weatherAlerts"
   | "diagnosis"
+  | "premium"
   | null;
 
 export function GardenApp() {
@@ -62,6 +65,13 @@ export function GardenApp() {
     model.plantInstances.find((plant) => plant.id === lastAddedPlantId) ??
     model.plantInstances[0];
   const isDesktopWeb = Platform.OS === "web" && width >= 900;
+  const entitlements = getBridgeEntitlements({
+    email: localSession?.email,
+    config: parseEntitlementConfig({
+      paywallEnabled: process.env.EXPO_PUBLIC_ENABLE_PAYWALL,
+      adminEmails: process.env.EXPO_PUBLIC_ADMIN_EMAILS
+    })
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -859,6 +869,17 @@ export function GardenApp() {
       return <SettingsScreen onBack={() => setOverlay(null)} />;
     }
 
+    if (overlay === "premium") {
+      return (
+        <PremiumExplanationScreen
+          accountState={entitlements.accountState}
+          bypassesPayment={entitlements.bypassesPayment}
+          paywallEnabled={entitlements.paywallEnabled}
+          onBack={() => setOverlay(null)}
+        />
+      );
+    }
+
     if (overlay === "calendar") {
       return <TaskCalendarScreen tasks={model.tasks} onBack={() => setOverlay(null)} />;
     }
@@ -897,7 +918,16 @@ export function GardenApp() {
       return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} onDiagnoseByPhoto={() => handleOpenDiagnosis()} />;
     }
 
-    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} onUpdateProfile={handleUpdateProfile} onResetLocalData={handleResetLocalAppData} />;
+    return (
+      <ProfileScreen
+        model={model}
+        entitlements={entitlements}
+        onOpenSettings={() => setOverlay("settings")}
+        onOpenPremium={() => setOverlay("premium")}
+        onUpdateProfile={handleUpdateProfile}
+        onResetLocalData={handleResetLocalAppData}
+      />
+    );
   }
 
   const appContent =

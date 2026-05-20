@@ -112,6 +112,19 @@ Git is initialized locally on `main` and the GitHub remote is:
 https://github.com/TerryFoster1/garden_app.git
 ```
 
+## Public Beta Backend Direction
+
+Recommended first backend: Supabase for auth, Postgres, Row Level Security, private photo storage, and Edge Functions. This gives Pattypan the shortest path from local alpha to public beta cloud sync while keeping the Expo mobile app intact.
+
+Stripe billing should wait until backend auth exists. The planned model is Pattypan Premium at `$3.99/month` with free, trial, premium, admin, lifetime, and comped account states. Owner/admin, lifetime, and comped accounts bypass payment checks.
+
+Important docs:
+
+- `docs/PUBLIC_BETA_BACKEND_PLAN.md`
+- `docs/BILLING_MODEL.md`
+- `docs/STRIPE_SETUP.md`
+- `docs/SECURE_API_PROXY.md`
+
 ## Current Scope
 
 - Clean first-use startup: Pattypan no longer loads fake gardens/plants by default. First launch goes through landing, local prototype profile setup, location entry, then Add Plant, Create Garden, or Load Demo Garden.

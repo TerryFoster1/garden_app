@@ -36,7 +36,13 @@ This mirrors the sibling app convention of keeping `domain`, `data`, `services`,
 
 ## Backend Direction
 
-The current build is local/mock only. Later backend work should expose repository interfaces for users, gardens, beds, plant instances, photos, scans, schedules, weather snapshots, notification preferences, and knowledge content. Postgres/Neon should be a natural fit because the domain is relational and needs auditability over time.
+The current alpha still works locally, but public beta needs real server-side accounts, cloud sync, private photo storage, entitlement state, Stripe webhook handling, and secure provider API proxying.
+
+Recommended public-beta backend: Supabase.
+
+Supabase is the best first backend fit because it gives Pattypan email/password auth, Postgres, Row Level Security, private file storage, and Edge Functions in one Expo-friendly stack. The relational model maps cleanly to users, gardens, beds, plant instances, photos, diagnosis history, tasks, weather cache, subscriptions, and entitlement overrides. See `docs/PUBLIC_BETA_BACKEND_PLAN.md`.
+
+Neon Postgres plus custom Vercel APIs remains a future option if Pattypan needs more custom server architecture later, but it would require building more auth, storage, and access-control infrastructure before beta.
 
 ## Deployment + Monetization Readiness
 
@@ -48,7 +54,7 @@ Expo/EAS mobile builds remain the most important production path. Browser polish
 
 There is no active paywall during the personal-use phase. The entitlement service exists only as a future boundary. It supports `free`, `trial`, `premium`, `admin`, `lifetime`, and `comped` account states. Admin, lifetime, and comped users bypass future payment checks, and admin emails can be configured through environment variables later.
 
-Stripe is the likely future subscription provider, but no payment flow, checkout, webhook, or subscription enforcement exists yet. All features remain available while `EXPO_PUBLIC_ENABLE_PAYWALL=false`.
+Stripe is the planned future subscription provider for Pattypan Premium at `$3.99/month`, but no live checkout, webhook, or paid enforcement should launch until backend auth exists. The current Profile subscription screen and Premium explanation screen are UI scaffolds only. All features remain available while `EXPO_PUBLIC_ENABLE_PAYWALL=false`.
 
 ## Auth Readiness
 
@@ -61,7 +67,7 @@ Prototype local auth now exists so testing no longer bypasses Sign up / Sign in.
 - Saved user garden data tied to a stable user id.
 - Server-side protection for paid provider calls and sensitive secrets.
 
-Until production auth exists, the app remains local-first and should not store private server secrets in client code. Expo public environment variables are acceptable only for providers intended for client-side use during the prototype. `.env.local` is ignored by git and must not be committed.
+Until production auth exists, the app remains local-first and should not store private server secrets in client code. Expo public environment variables are acceptable only for private prototype testing. Before public beta, OpenAI, PlantNet, OpenWeather, and Stripe secret keys must move server-side behind secure proxy routes or Supabase Edge Functions. `.env.local` is ignored by git and must not be committed.
 
 ## PlantNet Provider Boundary
 

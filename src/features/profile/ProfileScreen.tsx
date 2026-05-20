@@ -3,13 +3,17 @@ import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "reac
 import { Ionicons } from "@expo/vector-icons";
 
 import { GardenHomeModel, NotificationPreference } from "../../domain";
+import type { EntitlementResult } from "../../services/entitlements/entitlementService";
+import { premiumPlan } from "../../services/entitlements/subscriptionProvider";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type ProfileScreenProps = {
   model: GardenHomeModel;
   onOpenSettings: () => void;
+  onOpenPremium: () => void;
   onUpdateProfile: (updates: { name: string; locationLabel: string; notificationPreferences: NotificationPreference[] }) => void;
   onResetLocalData: () => void;
+  entitlements: EntitlementResult;
 };
 
 const defaultPreferences: NotificationPreference[] = [
@@ -28,7 +32,7 @@ const preferenceLabels: Record<string, { icon: keyof typeof Ionicons.glyphMap; l
   "pref-harvest": { icon: "basket-outline", label: "Harvest reminders", helper: "Harvest windows and crop checks" }
 };
 
-export function ProfileScreen({ model, onOpenSettings, onUpdateProfile, onResetLocalData }: ProfileScreenProps) {
+export function ProfileScreen({ model, onOpenSettings, onOpenPremium, onUpdateProfile, onResetLocalData, entitlements }: ProfileScreenProps) {
   const initialPreferences = useMemo(() => mergePreferences(model.notificationPreferences, model.user.id), [model.notificationPreferences, model.user.id]);
   const [displayName, setDisplayName] = useState(model.user.name);
   const [locationLabel, setLocationLabel] = useState(model.user.locationLabel);
@@ -102,13 +106,42 @@ export function ProfileScreen({ model, onOpenSettings, onUpdateProfile, onResetL
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Subscription</Text>
+        <View style={styles.subscriptionCard}>
+          <View style={styles.subscriptionIcon}>
+            <Ionicons name="sparkles-outline" size={24} color={colors.leafDeep} />
+          </View>
+          <View style={styles.infoCopy}>
+            <Text style={styles.infoTitle}>{premiumPlan.name}</Text>
+            <Text style={styles.infoText}>
+              {entitlements.bypassesPayment
+                ? "Full access via owner/admin, lifetime, or comped bypass."
+                : entitlements.paywallEnabled
+                  ? "Premium gates are enabled; checkout waits for backend auth."
+                  : "Paywall off for alpha. Future premium is planned at $3.99/month."}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statusGrid}>
+          <Status label="Account state" value={entitlements.accountState} />
+          <Status label="Payment bypass" value={entitlements.bypassesPayment ? "yes" : "no"} />
+          <Status label="Paywall" value={entitlements.paywallEnabled ? "on" : "off"} />
+          <Status label="Checkout" value="not live" />
+        </View>
+        <TouchableOpacity accessibilityRole="button" style={styles.saveButton} onPress={onOpenPremium}>
+          <Ionicons name="leaf-outline" size={18} color={colors.white} />
+          <Text style={styles.saveText}>View premium plan</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Provider Status</Text>
         <View style={styles.statusGrid}>
           <Status label="Weather provider" value={process.env.EXPO_PUBLIC_WEATHER_PROVIDER || "not set"} />
           <Status label="Plant ID provider" value={process.env.EXPO_PUBLIC_PLANT_ID_PROVIDER || "not set"} />
           <Status label="AI provider" value={process.env.EXPO_PUBLIC_AI_PROVIDER || "not set"} />
           <Status label="Notifications" value="local" />
-          <Status label="Paywall" value="off" />
+          <Status label="Paywall" value={entitlements.paywallEnabled ? "on" : "off"} />
         </View>
       </View>
 
@@ -328,6 +361,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceWarm,
     justifyContent: "center",
     padding: spacing.md
+  },
+  subscriptionCard: {
+    borderRadius: 22,
+    backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  subscriptionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center"
   },
   statusValue: {
     color: colors.leafDeep,
