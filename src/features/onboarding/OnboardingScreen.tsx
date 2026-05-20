@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
 
 import { GardenCard } from "../../components/GardenCard";
 import { PrimaryButton } from "../../components/PrimaryButton";
@@ -25,20 +27,23 @@ export function OnboardingScreen({ initialDisplayName = "", onResolveLocation, o
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("Canada");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [resolvedLocation, setResolvedLocation] = useState<GeocodedLocation | null>(null);
   const [error, setError] = useState("");
   const [isChecking, setIsChecking] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("");
+  const [notificationStatus, setNotificationStatus] = useState("");
 
   async function saveProfileAndContinue(next: "addPlant" | "garden" | "demo") {
     setError("");
     const label = [street.trim(), city.trim(), region.trim(), postalCode.trim(), country.trim()].filter(Boolean).join(", ");
-    if (!city.trim() || !region.trim() || !country.trim()) {
+    if (!resolvedLocation && (!city.trim() || !region.trim() || !country.trim())) {
       setError("Enter at least a city, province/state, and country for weather alerts.");
       return;
     }
 
     setIsChecking(true);
     try {
-      const location = await onResolveLocation(label);
+      const location = resolvedLocation ?? await onResolveLocation(label);
       if (!location) {
         setError("We couldn't find that location. Please enter a full address or city/postal code.");
         return;
@@ -66,6 +71,47 @@ export function OnboardingScreen({ initialDisplayName = "", onResolveLocation, o
     }
   }
 
+  async function useCurrentLocation() {
+    setError("");
+    setLocationStatus("Requesting location...");
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== "granted") {
+      setLocationStatus("Location permission was not granted. Enter an address instead.");
+      return;
+    }
+
+    try {
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const reverse = await Location.reverseGeocodeAsync(current.coords);
+      const place = reverse[0];
+      const label = [place?.city, place?.region, place?.postalCode, place?.country].filter(Boolean).join(", ") || "Current location";
+      setCity(place?.city ?? "");
+      setRegion(place?.region ?? "");
+      setPostalCode(place?.postalCode ?? "");
+      setCountry(place?.country ?? country);
+      setResolvedLocation({ label, latitude: current.coords.latitude, longitude: current.coords.longitude });
+      setLocationStatus(`Location set: ${label}`);
+    } catch {
+      setLocationStatus("We could not read your current location. Enter an address instead.");
+    }
+  }
+
+  async function requestNotifications() {
+    setNotificationStatus("Requesting reminders...");
+    const permission = await Notifications.requestPermissionsAsync();
+    const granted = permission.granted || permission.status === "granted";
+    setNotificationsEnabled(granted);
+    setNotificationStatus(granted ? "Reminders allowed for this device." : "Reminders not allowed. You can still use Pattypan without notifications.");
+  }
+
+  function updateManualLocation(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value);
+      setResolvedLocation(null);
+      setLocationStatus("");
+    };
+  }
+
   return (
     <View>
       <ScreenHeader eyebrow="First setup" title="Make Pattypan yours." subtitle="Account created locally. Now add the location Pattypan should use for weather and garden alerts." />
@@ -74,22 +120,28 @@ export function OnboardingScreen({ initialDisplayName = "", onResolveLocation, o
         <Ionicons name="location-outline" size={28} color={colors.leafDeep} />
         <Text style={styles.cardTitle}>Weather starts with a real location</Text>
         <Text style={styles.cardText}>Pattypan will geocode this before saving. If it cannot be found, the app will ask for a more complete address.</Text>
+        <TouchableOpacity accessibilityRole="button" style={styles.permissionButton} onPress={useCurrentLocation}>
+          <Ionicons name="navigate-outline" size={18} color={colors.leafDeep} />
+          <Text style={styles.permissionText}>Use my current location</Text>
+        </TouchableOpacity>
+        {locationStatus ? <Text style={styles.statusText}>{locationStatus}</Text> : null}
       </GardenCard>
 
       <View style={styles.form}>
         <Field label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Your name" />
-        <Field label="Street address" value={street} onChangeText={setStreet} placeholder="Optional" />
-        <Field label="City" value={city} onChangeText={setCity} placeholder="Kitchener" />
-        <Field label="Province / State" value={region} onChangeText={setRegion} placeholder="Ontario" />
-        <Field label="Postal / ZIP code" value={postalCode} onChangeText={setPostalCode} placeholder="Optional but helpful" />
-        <Field label="Country" value={country} onChangeText={setCountry} placeholder="Canada" />
+        <Field label="Street address" value={street} onChangeText={updateManualLocation(setStreet)} placeholder="Optional" />
+        <Field label="City" value={city} onChangeText={updateManualLocation(setCity)} placeholder="Kitchener" />
+        <Field label="Province / State" value={region} onChangeText={updateManualLocation(setRegion)} placeholder="Ontario" />
+        <Field label="Postal / ZIP code" value={postalCode} onChangeText={updateManualLocation(setPostalCode)} placeholder="Optional but helpful" />
+        <Field label="Country" value={country} onChangeText={updateManualLocation(setCountry)} placeholder="Canada" />
       </View>
 
-      <TouchableOpacity accessibilityRole="switch" accessibilityState={{ checked: notificationsEnabled }} style={styles.notificationCard} onPress={() => setNotificationsEnabled((current) => !current)}>
+      <TouchableOpacity accessibilityRole="switch" accessibilityState={{ checked: notificationsEnabled }} style={styles.notificationCard} onPress={requestNotifications}>
         <Ionicons name="notifications-outline" size={24} color={colors.leafDeep} />
         <View style={styles.notificationCopy}>
           <Text style={styles.cardTitle}>Allow reminders and garden warnings</Text>
           <Text style={styles.cardText}>Daily brief, watering, frost/heat/wind, harvest, and weekly photo update categories are scaffolded locally.</Text>
+          {notificationStatus ? <Text style={styles.statusText}>{notificationStatus}</Text> : null}
         </View>
         <View style={[styles.toggle, notificationsEnabled && styles.toggleEnabled]}>
           <View style={[styles.toggleKnob, notificationsEnabled && styles.toggleKnobEnabled]} />
@@ -206,5 +258,30 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "900",
     marginBottom: spacing.sm
+  },
+  permissionButton: {
+    minHeight: 46,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  permissionText: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  statusText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    lineHeight: 17,
+    fontWeight: "800",
+    marginTop: spacing.xs
   }
 });

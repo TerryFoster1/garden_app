@@ -119,7 +119,7 @@ https://github.com/TerryFoster1/garden_app.git
 - Clean mobile navigation: Home, My Garden, Library, Profile.
 - First-open Pattypan landing/auth entry screen. Sign up and Sign in now require local email/password forms before app access.
 - Local prototype auth persists a session and a salted non-cryptographic password hash on-device. This is not production-secure; public launch needs server-side auth.
-- Onboarding requires a geocodable location before saving weather context, then scaffolds notification categories for morning briefs, watering, weather warnings, harvest, and weekly photos.
+- Onboarding asks for device location permission or a validated manual address before saving weather context, then asks for notification permission and scaffolds categories for morning briefs, watering, weather warnings, harvest, and weekly photos.
 - Garden setup uses labeled bed type and dimension fields. Sun/shade mapping is optional and unknown sun/moisture is labeled honestly until mapped.
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, send the image to PlantNet when configured, review multiple possible matches with confidence percentages, confirm or edit the selected match, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
@@ -129,6 +129,7 @@ https://github.com/TerryFoster1/garden_app.git
 - Plant operations: rename display name, mark watered, log harvest, move, remove, scan, and open useful plant detail.
 - Home command center: atmospheric weather/status hero, urgent action checklist, and one Add Plant CTA.
 - OpenWeather-backed Home intelligence: current conditions refresh from the provider when configured, then Pattypan derives garden action alerts.
+- Weather alerts are converted into actionable Home tasks, such as frost protection, heat stress, wind support, rain protection, and mildew checks.
 - Library intelligence: Ask Pattypan, topic-aware Library questions, and useful topic screens for pests, diseases, plant care, propagation, and growing from seed.
 - Dedicated diagnosis flow: take/pick a photo, optionally link a PlantInstance, choose symptoms, run PlantNet/OpenAI explanation, and save a diagnosis photo plus follow-up task.
 - AI Optimize Bed: OpenAI-backed bed review with local rule fallback for overcrowding, spacing, airflow, and companion suggestions.
@@ -145,13 +146,13 @@ https://github.com/TerryFoster1/garden_app.git
 Mocked or fallback:
 
 - Plant identification falls back to local mock suggestions if PlantNet is unavailable or no key is configured.
-- Disease/pest diagnosis has a PlantNet-ready service boundary, but the primary UI still routes through the camera/add flow and local fallback while diagnosis screens mature.
+- Disease/pest diagnosis uses the dedicated diagnosis flow with PlantNet identification candidates, OpenAI reasoning when configured, and local fallback guidance when providers are unavailable.
 - AI recommendations fall back to local rules if OpenAI is unavailable.
 - Weather falls back to the local Kitchener/Waterloo snapshot if OpenWeather is unavailable.
 - Personal weather station providers.
-- Production push notifications. Local notification preference categories are scaffolded.
+- Production push notifications. Local notification permission and preference categories are scaffolded.
 - Production auth and subscription lookups. Local email/password auth is prototype-only.
-- Sun/moisture status, companion checks, and spacing warnings remain partly local/rule-based.
+- Sun exposure can be manually mapped per bed in alpha; future compass/shade-source mapping will refine it. Moisture remains manual/sensor-off unless a future station or sensor integration is connected.
 - Harvest estimates are knowledge/rule based, not photo adjusted yet.
 - Plant knowledge is a useful mock dataset, not a live provider.
 - Plant photo storage is local/mock only; photos use local device URIs or seeded remote mock images.

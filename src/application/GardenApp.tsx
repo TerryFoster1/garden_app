@@ -20,7 +20,7 @@ import { TaskCalendarScreen } from "../features/tasks/TaskCalendarScreen";
 import { TodayScreen } from "../features/today/TodayScreen";
 import { WeatherAlertsScreen } from "../features/weather/WeatherAlertsScreen";
 import { AddPlantDraft } from "../features/add-plant/types";
-import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies } from "../domain";
+import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies, SunBand, WeatherAlert } from "../domain";
 import { clearAllLocalAppData, loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
 import { loadLocalSession, LocalSession } from "../services/localAuth";
 import { geocodeLocation, weatherProvider } from "../services/weather/weatherProvider";
@@ -123,7 +123,8 @@ export function GardenApp() {
             ...weather,
             locationLabel: current.user.locationLabel || weather.locationLabel
           },
-          weatherAlerts: weatherAlerts.length > 0 ? weatherAlerts : current.weatherAlerts
+          weatherAlerts: weatherAlerts.length > 0 ? weatherAlerts : current.weatherAlerts,
+          tasks: mergeWeatherTasks(current.tasks, weatherAlerts)
         }));
       })
       .catch(() => {
@@ -150,6 +151,33 @@ export function GardenApp() {
 
   function handlePhotoSelected(photoUri: string) {
     setSelectedPhotoUri(photoUri);
+  }
+
+  function mergeWeatherTasks(tasks: CareTask[], alerts: WeatherAlert[]) {
+    const nonWeatherTasks = tasks.filter((task) => !task.id.startsWith("task-weather-alert-"));
+    const weatherTasks = alerts.slice(0, 3).map((alert) => weatherAlertToTask(alert));
+    return [...weatherTasks, ...nonWeatherTasks];
+  }
+
+  function weatherAlertToTask(alert: WeatherAlert): CareTask {
+    const typeByAlert: Record<WeatherAlert["type"], CareTask["type"]> = {
+      frost: "frost-protection",
+      heat: "heat-stress",
+      wind: "wind-protection",
+      "heavy-rain": "heavy-rain-protection",
+      humidity: "pest-check",
+      storm: "heavy-rain-protection"
+    };
+
+    return {
+      id: `task-weather-alert-${alert.id}`,
+      type: typeByAlert[alert.type],
+      title: alert.title,
+      dueAt: alert.startsAt,
+      priority: alert.severity === "urgent" ? "urgent" : alert.severity === "warning" ? "high" : "normal",
+      status: "needs-confirmation",
+      reason: alert.summary
+    };
   }
 
   function handleOpenAddPlant(placement?: GardenPlacement | null) {
@@ -690,6 +718,39 @@ export function GardenApp() {
     setSelectedPlacement((current) => (current?.bedId === bedId ? { ...current, label: updates.name, locationLabel: updates.name } : current));
   }
 
+  function handleUpdateSunExposure(bedId: string, exposure: SunBand) {
+    setModel((current) => {
+      const bed = current.beds.find((item) => item.id === bedId);
+      const existingProfile = current.sunProfiles.find((profile) => profile.bedId === bedId);
+      const nextProfile = {
+        id: existingProfile?.id ?? `sun-${bedId}`,
+        bedId,
+        morning: exposure,
+        midday: exposure,
+        afternoon: exposure,
+        estimatedDailySunHours: getEstimatedSunHours(exposure),
+        confidence: "low" as const,
+        shadeNotes: "Manual alpha sun exposure entry. Compass and shade mapping can refine this later."
+      };
+
+      return {
+        ...current,
+        zones: bed
+          ? current.zones.map((zone) =>
+              zone.id === bed.zoneId
+                ? {
+                    ...zone,
+                    sunExposure: exposure,
+                    microclimateNotes: "Manual sun exposure entered in Bed Detail."
+                  }
+                : zone
+            )
+          : current.zones,
+        sunProfiles: [nextProfile, ...current.sunProfiles.filter((profile) => profile.bedId !== bedId)]
+      };
+    });
+  }
+
   function handleRemovePlant(plantId: string) {
     setModel((current) => ({
       ...current,
@@ -780,6 +841,7 @@ export function GardenApp() {
           onRemovePlant={handleRemovePlant}
           onRepositionPlant={handleRepositionPlant}
           onUpdateBed={handleUpdateBed}
+          onUpdateSunExposure={handleUpdateSunExposure}
           onDiagnose={() => handleOpenDiagnosis()}
         />
       );
@@ -1044,6 +1106,19 @@ function inferFeedingNeeds(value?: string): PlantSpecies["feedingNeeds"] {
     return "light";
   }
   return "moderate";
+}
+
+function getEstimatedSunHours(exposure: SunBand) {
+  if (exposure === "full-sun") {
+    return 8;
+  }
+  if (exposure === "part-sun") {
+    return 5;
+  }
+  if (exposure === "part-shade") {
+    return 3;
+  }
+  return 1;
 }
 
 function sanitizeLegacyProfile(model: GardenHomeModel): GardenHomeModel {

@@ -4,7 +4,7 @@
     "slug": "garden-app",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "gardenapp",
+    "scheme": "pattypan",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
       "**/*"
@@ -24,6 +24,13 @@
           "cameraPermission": "Pattypan uses the camera so you can scan plants, pests, weeds, and garden changes."
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pattypan uses your location to personalize weather, frost, heat, wind, and garden alerts."
+        }
+      ],
+      "expo-notifications",
       "expo-font"
     ]
   }

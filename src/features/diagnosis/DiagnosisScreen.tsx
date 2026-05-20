@@ -8,7 +8,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { GardenHomeModel, PlantHealthScan } from "../../domain";
 import { aiRecommendationProvider, AiAssistantResponse } from "../../services/aiRecommendationProvider";
-import { plantIdentificationProvider } from "../../services/plantIdentificationProvider";
+import { plantIdentificationProvider, PlantIdentificationMatch } from "../../services/plantIdentificationProvider";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type DiagnosisScreenProps = {
@@ -28,6 +28,7 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
   const [isRunning, setIsRunning] = useState(false);
   const [scan, setScan] = useState<PlantHealthScan | null>(null);
   const [answer, setAnswer] = useState<AiAssistantResponse | null>(null);
+  const [matches, setMatches] = useState<PlantIdentificationMatch[]>([]);
   const linkedPlant = model.plantInstances.find((plant) => plant.id === plantId);
 
   async function pickImage(source: "camera" | "library") {
@@ -68,6 +69,7 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
         plantIdentificationProvider.diagnosePlant(photoUri),
         plantIdentificationProvider.identifyPlant(photoUri).catch(() => null)
       ]);
+      setMatches(identification?.matches ?? []);
       const topMatch = identification?.matches[0]?.commonName;
       const explanation = await aiRecommendationProvider.explainDiagnosis({
         plantName: linkedPlant?.nickname,
@@ -92,6 +94,7 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
         answer: "AI is unavailable, so this is local guidance. Check moisture first, inspect leaf undersides, isolate severe pest issues, and avoid fertilizing until you understand the stress pattern.",
         actions: ["Check soil moisture.", "Inspect both sides of leaves.", "Remove badly diseased leaves only if safe.", "Create a follow-up task if the issue is spreading."]
       });
+      setMatches([]);
     } finally {
       setIsRunning(false);
     }
@@ -149,6 +152,18 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
 
       <PrimaryButton label={isRunning ? "Checking..." : "Run Diagnosis"} onPress={runDiagnosis} icon={<Ionicons name="sparkles-outline" size={20} color={colors.white} />} />
 
+      {matches.length > 0 ? (
+        <View style={styles.matchPanel}>
+          <Text style={styles.matchLabel}>Possible plant identity</Text>
+          {matches.slice(0, 3).map((match) => (
+            <View key={match.id} style={styles.matchRow}>
+              <Text style={styles.matchName}>{match.commonName}</Text>
+              <Text style={styles.matchScore}>{Math.round(match.confidence * 100)}%</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {answer ? (
         <View style={styles.resultCard}>
           <Text style={styles.matchLabel}>{answer.provider === "openai" ? "Pattypan AI" : "Local guidance"} - {answer.confidence} confidence</Text>
@@ -181,6 +196,10 @@ const styles = StyleSheet.create({
   symptomTextActive: { color: colors.white },
   input: { minHeight: 54, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: spacing.md, color: colors.text, fontSize: typography.body, fontWeight: "800" },
   resultCard: { borderRadius: 26, backgroundColor: "#eef6e9", borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.sm },
+  matchPanel: { borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
   matchLabel: { color: colors.leaf, fontSize: typography.caption, fontWeight: "900", textTransform: "uppercase" },
+  matchRow: { minHeight: 38, borderRadius: 14, backgroundColor: colors.surfaceWarm, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  matchName: { color: colors.text, fontSize: typography.small, fontWeight: "900" },
+  matchScore: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900" },
   resultText: { color: colors.text, fontSize: typography.small, lineHeight: 21, fontWeight: "800" }
 });

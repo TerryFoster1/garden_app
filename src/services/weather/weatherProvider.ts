@@ -162,29 +162,30 @@ async function getOpenWeatherHourly(latitude: number, longitude: number, apiKey:
 
 export function buildGardenWeatherAlerts(current: WeatherSnapshot, hourly: HourlyForecastPoint[]): WeatherAlert[] {
   const alerts: WeatherAlert[] = [];
+  const alertKey = new Date().toISOString().slice(0, 10);
   const nextRain = hourly.reduce((total, point) => total + point.rainfallMm, 0);
   const maxWind = Math.max(current.windKph, ...hourly.map((point) => point.windKph));
   const maxTemp = Math.max(current.temperatureC, ...hourly.map((point) => point.temperatureC));
   const maxHumidity = Math.max(current.humidityPercent, ...hourly.map((point) => point.humidityPercent));
 
   if (current.frostRisk !== "none" || hourly.some((point) => point.temperatureC <= 3)) {
-    alerts.push({ id: `weather-frost-${Date.now()}`, type: "frost", title: "Frost risk tonight", severity: "warning", startsAt: new Date().toISOString(), summary: "Cover basil, peppers, tender starts, and new transplants before evening." });
+    alerts.push({ id: `weather-frost-${alertKey}`, type: "frost", title: "Frost risk tonight", severity: "warning", startsAt: new Date().toISOString(), summary: "Cover basil, peppers, tender starts, and new transplants before evening." });
   }
 
   if (nextRain >= 8 || current.rainfallMm24h >= 8) {
-    alerts.push({ id: `weather-rain-${Date.now()}`, type: "heavy-rain", title: "Skip watering after rain", severity: "watch", startsAt: new Date().toISOString(), summary: "Meaningful rain is expected or already landed. Check containers before watering beds." });
+    alerts.push({ id: `weather-rain-${alertKey}`, type: "heavy-rain", title: "Skip watering after rain", severity: "watch", startsAt: new Date().toISOString(), summary: "Meaningful rain is expected or already landed. Check containers before watering beds." });
   }
 
   if (maxTemp >= 29) {
-    alerts.push({ id: `weather-heat-${Date.now()}`, type: "heat", title: "Heat stress likely", severity: "watch", startsAt: new Date().toISOString(), summary: "Water early, shade tender greens, and check containers for fast drying." });
+    alerts.push({ id: `weather-heat-${alertKey}`, type: "heat", title: "Heat stress likely", severity: "watch", startsAt: new Date().toISOString(), summary: "Water early, shade tender greens, and check containers for fast drying." });
   }
 
   if (maxWind >= 35) {
-    alerts.push({ id: `weather-wind-${Date.now()}`, type: "wind", title: "Secure trellis for wind", severity: "watch", startsAt: new Date().toISOString(), summary: "Check tomatoes, cucumbers, tall flowers, and patio containers before gusts arrive." });
+    alerts.push({ id: `weather-wind-${alertKey}`, type: "wind", title: "Secure trellis for wind", severity: "watch", startsAt: new Date().toISOString(), summary: "Check tomatoes, cucumbers, tall flowers, and patio containers before gusts arrive." });
   }
 
   if (maxHumidity >= 75 && maxTemp >= 18) {
-    alerts.push({ id: `weather-humidity-${Date.now()}`, type: "humidity", title: "Mildew risk from humidity", severity: "watch", startsAt: new Date().toISOString(), summary: "Inspect cucumbers, squash, tomatoes, and crowded herbs for airflow and leaf spotting." });
+    alerts.push({ id: `weather-humidity-${alertKey}`, type: "humidity", title: "Mildew risk from humidity", severity: "watch", startsAt: new Date().toISOString(), summary: "Inspect cucumbers, squash, tomatoes, and crowded herbs for airflow and leaf spotting." });
   }
 
   return alerts;

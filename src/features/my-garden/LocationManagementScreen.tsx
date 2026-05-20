@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
-import { GardenBed, GardenHomeModel, GardenZone, PlantInstance, PlantSpecies } from "../../domain";
+import { GardenBed, GardenHomeModel, GardenZone, PlantInstance, PlantSpecies, SunBand } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
 import { aiRecommendationProvider, AiBedOptimization } from "../../services/aiRecommendationProvider";
 import { getBedPlanningSummary, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
@@ -32,8 +32,16 @@ type LocationManagementScreenProps = {
   onRemovePlant: (plantId: string) => void;
   onRepositionPlant: (plantId: string, xPercent: number, yPercent: number) => void;
   onUpdateBed: (bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) => void;
+  onUpdateSunExposure: (bedId: string, exposure: SunBand) => void;
   onDiagnose?: () => void;
 };
+
+const sunOptions: Array<{ value: SunBand; label: string }> = [
+  { value: "full-sun", label: "Full sun" },
+  { value: "part-sun", label: "Part sun" },
+  { value: "part-shade", label: "Part shade" },
+  { value: "shade", label: "Shade" }
+];
 
 export function LocationManagementScreen({
   model,
@@ -45,9 +53,12 @@ export function LocationManagementScreen({
   onRemovePlant,
   onRepositionPlant,
   onUpdateBed,
+  onUpdateSunExposure,
   onDiagnose
 }: LocationManagementScreenProps) {
   const [isEditingBed, setIsEditingBed] = useState(false);
+  const [isMappingSun, setIsMappingSun] = useState(false);
+  const [manualSunExposure, setManualSunExposure] = useState<SunBand>("part-sun");
   const [replantingPlantId, setReplantingPlantId] = useState<string | null>(null);
   const [movingToAnotherPlantId, setMovingToAnotherPlantId] = useState<string | null>(null);
   const [optimization, setOptimization] = useState<AiBedOptimization | null>(null);
@@ -69,7 +80,9 @@ export function LocationManagementScreen({
     setLengthFeet(String(bed?.lengthFeet ?? ""));
     setWidthFeet(String(bed?.widthFeet ?? ""));
     setDepthInches(String(bed?.depthInches ?? ""));
-  }, [bed?.id, bed?.name, bed?.lengthFeet, bed?.widthFeet, bed?.depthInches, placement.label]);
+    setManualSunExposure(sunProfile?.midday ?? "part-sun");
+    setIsMappingSun(false);
+  }, [bed?.id, bed?.name, bed?.lengthFeet, bed?.widthFeet, bed?.depthInches, placement.label, sunProfile?.midday]);
 
   function confirmRemove(plant: PlantInstance) {
     Alert.alert("Remove this plant from your garden?", plant.nickname, [
@@ -161,10 +174,33 @@ export function LocationManagementScreen({
         <Signal icon="leaf-outline" label="plants" value={`${plants.length}`} />
       </View>
       {bed ? (
-        <TouchableOpacity accessibilityRole="button" style={styles.mapSunButton} onPress={() => Alert.alert("Map Sun Exposure", "Guided compass and shade mapping is not active yet. For now, edit this bed later to enter manual sun exposure.")}>
+        <TouchableOpacity accessibilityRole="button" style={styles.mapSunButton} onPress={() => setIsMappingSun((current) => !current)}>
           <Ionicons name="sunny-outline" size={18} color={colors.leafDeep} />
           <Text style={styles.mapSunText}>{sunProfile ? "Refine Sun Exposure" : "Map Sun Exposure"}</Text>
         </TouchableOpacity>
+      ) : null}
+
+      {bed && isMappingSun ? (
+        <View style={styles.sunMapper}>
+          <Text style={styles.notesTitle}>Set sun exposure manually</Text>
+          <Text style={styles.notesText}>Use what you observe today. Compass and shade-source mapping can refine this later.</Text>
+          <View style={styles.sunChips}>
+            {sunOptions.map((option) => (
+              <TouchableOpacity key={option.value} accessibilityRole="button" style={[styles.sunChip, manualSunExposure === option.value && styles.sunChipActive]} onPress={() => setManualSunExposure(option.value)}>
+                <Text style={[styles.sunChipText, manualSunExposure === option.value && styles.sunChipTextActive]}>{option.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <PrimaryButton
+            label="Save sun exposure"
+            onPress={() => {
+              onUpdateSunExposure(bed.id, manualSunExposure);
+              setIsMappingSun(false);
+            }}
+            tone="sun"
+            icon={<Ionicons name="sunny-outline" size={20} color={colors.leafDeep} />}
+          />
+        </View>
       ) : null}
 
       {bed ? (
@@ -441,6 +477,41 @@ const styles = StyleSheet.create({
     color: colors.leafDeep,
     fontSize: typography.small,
     fontWeight: "900"
+  },
+  sunMapper: {
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm
+  },
+  sunChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
+  sunChip: {
+    minHeight: 42,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  sunChipActive: {
+    backgroundColor: colors.leafDeep,
+    borderColor: colors.leafDeep
+  },
+  sunChipText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  sunChipTextActive: {
+    color: colors.white
   },
   warning: {
     borderRadius: 22,

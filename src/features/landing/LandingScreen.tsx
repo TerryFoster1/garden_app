@@ -14,6 +14,7 @@ type AuthMode = "landing" | "sign-up" | "sign-in";
 
 export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenProps) {
   const [mode, setMode] = useState<AuthMode>("landing");
+  const [showLearnMore, setShowLearnMore] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -65,7 +66,22 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
         <Text style={styles.tagline}>Your Heirloom Secret</Text>
       </View>
 
-      {mode === "landing" ? (
+      {mode === "landing" && showLearnMore ? (
+        <View style={styles.formCard}>
+          <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => setShowLearnMore(false)}>
+            <Ionicons name="chevron-back" size={18} color={colors.leafDeep} />
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.formTitle}>A garden companion that remembers.</Text>
+          <Text style={styles.formHelp}>Pattypan helps you build a living record of your plants, beds, weather, diagnoses, and harvest timing without turning gardening into a spreadsheet.</Text>
+          <LearnItem icon="camera-outline" text="Identify plants and problems from photos, then confirm before anything is saved." />
+          <LearnItem icon="partly-sunny-outline" text="Use location-aware weather to turn frost, rain, heat, wind, and humidity into practical garden actions." />
+          <LearnItem icon="leaf-outline" text="Track each plant as a specific living instance with photos, care tasks, and growth history." />
+          <TouchableOpacity accessibilityRole="button" style={styles.submitButton} onPress={() => { setShowLearnMore(false); setMode("sign-up"); }}>
+            <Text style={styles.submitText}>Create account</Text>
+          </TouchableOpacity>
+        </View>
+      ) : mode === "landing" ? (
         <View style={styles.actions}>
           <TouchableOpacity accessibilityRole="button" style={styles.signUpButton} onPress={() => setMode("sign-up")}>
             <Ionicons name="leaf" size={22} color={colors.sage} />
@@ -75,7 +91,14 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             <Ionicons name="leaf-outline" size={24} color={colors.leafDeep} />
             <Text style={styles.signInText}>Sign in</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" style={styles.learnButton} onPress={onLearnMore}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={styles.learnButton}
+            onPress={() => {
+              setShowLearnMore(true);
+              onLearnMore();
+            }}
+          >
             <Text style={styles.learnText}>Learn more</Text>
             <Ionicons name="chevron-forward" size={22} color={colors.white} />
           </TouchableOpacity>
@@ -98,6 +121,15 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
           </TouchableOpacity>
         </View>
       )}
+    </View>
+  );
+}
+
+function LearnItem({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={styles.learnItem}>
+      <Ionicons name={icon} size={20} color={colors.leafDeep} />
+      <Text style={styles.learnItemText}>{text}</Text>
     </View>
   );
 }
@@ -322,5 +354,23 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.body,
     fontWeight: "900"
+  },
+  learnItem: {
+    minHeight: 54,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.md
+  },
+  learnItemText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "800",
+    lineHeight: 19
   }
 });
