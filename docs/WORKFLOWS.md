@@ -1,6 +1,17 @@
 # Workflows
 
-Garden App is a mobile garden operating system. It should be organized around live workflows, not generic app sections.
+Pattypan is a mobile garden operating system. It should be organized around live workflows, not generic app sections.
+
+## Bottom Navigation
+
+Final bottom nav:
+
+1. Home
+2. My Garden
+3. Library
+4. Profile
+
+Scan is invoked from Add Plant and Library diagnose/search. Planner is invoked from My Garden, Bed Detail, Add/Edit Bed, and AI Optimize Bed.
 
 ## First Setup
 
@@ -36,10 +47,19 @@ Do not ask users to manually enter climate data unless automatic lookup fails.
 
 From bed detail, Add Plant should preserve the selected bed context. The plant appears in the overhead layout with spacing circles. Tap-to-place is acceptable for the next version; drag/drop can follow after coordinates are added to PlantInstance.
 
+Long-press plant actions:
+
+- Harvest: confirm “Harvest and remove this plant from the bed?” and remove the PlantInstance.
+- Move: choose Move within this bed or Move to another bed.
+- Move within this bed: tap a new position and confirm “Replant here?”.
+- Move to another bed: choose a destination bed/zone.
+- Rename and Details open plant detail.
+- Remove deletes only the PlantInstance.
+
 ## Plant Detail
 
 Plant detail must combine generic species knowledge with personal instance state. It supports rename display name, mark watered, log harvest, move, remove, scan/photo update, and future diagnosis.
 
 ## Command Center
 
-Today is the command center: weather, urgent tasks, quick actions, care/harvest schedule, My Garden shortcut, and diagnose/knowledge paths.
+Home is the command center: weather, urgent tasks, quick actions, care/harvest schedule, My Garden shortcut, and diagnose/Library paths.

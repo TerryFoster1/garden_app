@@ -67,7 +67,11 @@ Planner is interactive even before drag/drop exists. Tapping a bed opens managem
 
 ## Command Center Direction
 
-Today is not a dashboard. It is the garden command center: weather context, required actions, quick action buttons, care/harvest toggle, garden preview, and diagnosis entry. It should help the user decide what to do now while outside.
+Home is not a dashboard. It is the garden command center: weather context, required actions, quick action buttons, care/harvest toggle, garden preview, and diagnosis entry. It should help the user decide what to do now while outside.
+
+## Navigation Cleanup
+
+Bottom nav is Home, My Garden, Library, Profile. Scan and Planner are not primary destinations. They are workflow actions inside Add Plant, Library, Bed Detail, Add/Edit Bed, and AI Optimize Bed.
 
 ## Display Name Rule
 

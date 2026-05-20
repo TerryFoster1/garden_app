@@ -106,6 +106,8 @@ export type PlantInstance = {
   source: "seed" | "transplant" | "division" | "houseplant" | "unknown";
   healthStatus: "thriving" | "watch" | "stressed" | "dormant";
   notes: string;
+  positionXPercent?: number;
+  positionYPercent?: number;
 };
 
 export type PlantPhoto = {

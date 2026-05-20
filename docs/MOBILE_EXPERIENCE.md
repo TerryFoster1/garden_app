@@ -30,13 +30,14 @@ Avoid:
 
 Primary bottom navigation:
 
-1. Today.
-2. Scan.
-3. My Garden.
-4. Planner.
-5. Knowledge.
+1. Home.
+2. My Garden.
+3. Library.
+4. Profile.
 
-Today is the operational hub. Scan is the identity-defining action. My Garden is the visual overview. Planner is the strategy tool. Knowledge supports context from tasks, scans, alerts, and plant pages.
+Home is the operational hub. My Garden is the spatial management experience. Library supports search, diagnosis, and learning. Profile contains account, location, notifications, provider status, and future subscription settings.
+
+Scan is still important, but it belongs in Add Plant and Library diagnose flows instead of bottom nav. Planner belongs in My Garden and Bed Detail instead of bottom nav.
 
 ## Interaction Size
 
@@ -65,3 +66,5 @@ At tab roots, default platform behavior can take over. Inside overlay flows, the
 When Add Plant starts from a bed/container/zone, the selected location should stay attached to the flow. The user should not have to answer indoor/outdoor again unless they intentionally move the plant to another location.
 
 Android back should step backward through Add Plant before leaving the flow.
+
+Bed Detail supports long-press plant actions. Move within bed currently uses tap-to-place as the interim mobile interaction; future drag/drop should build on saved plant coordinates.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, DimensionValue, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, DimensionValue, GestureResponderEvent, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { PrimaryButton } from "../../components/PrimaryButton";
@@ -28,6 +28,7 @@ type LocationManagementScreenProps = {
   onOpenPlant: (plantId: string) => void;
   onMovePlant: (plantId: string, placement: GardenPlacement) => void;
   onRemovePlant: (plantId: string) => void;
+  onRepositionPlant: (plantId: string, xPercent: number, yPercent: number) => void;
   onUpdateBed: (bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) => void;
 };
 
@@ -39,9 +40,12 @@ export function LocationManagementScreen({
   onOpenPlant,
   onMovePlant,
   onRemovePlant,
+  onRepositionPlant,
   onUpdateBed
 }: LocationManagementScreenProps) {
   const [isEditingBed, setIsEditingBed] = useState(false);
+  const [replantingPlantId, setReplantingPlantId] = useState<string | null>(null);
+  const [movingToAnotherPlantId, setMovingToAnotherPlantId] = useState<string | null>(null);
   const plants = getPlantsForPlacement(model.plantInstances, placement);
   const bed = placement.bedId ? model.beds.find((item) => item.id === placement.bedId) : undefined;
   const [bedName, setBedName] = useState(bed?.name ?? placement.label);
@@ -65,6 +69,53 @@ export function LocationManagementScreen({
     Alert.alert("Remove this plant from your garden?", plant.nickname, [
       { text: "Cancel", style: "cancel" },
       { text: "Remove", style: "destructive", onPress: () => onRemovePlant(plant.id) }
+    ]);
+  }
+
+  function confirmHarvest(plant: PlantInstance) {
+    Alert.alert("Harvest and remove this plant from the bed?", plant.nickname, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Harvest", style: "destructive", onPress: () => onRemovePlant(plant.id) }
+    ]);
+  }
+
+  function openPlantMenu(plant: PlantInstance) {
+    Alert.alert(plant.nickname, "Choose an action for this plant.", [
+      { text: "Harvest", onPress: () => confirmHarvest(plant) },
+      { text: "Move", onPress: () => openMoveMenu(plant) },
+      { text: "Rename", onPress: () => onOpenPlant(plant.id) },
+      { text: "Details", onPress: () => onOpenPlant(plant.id) },
+      { text: "Remove", style: "destructive", onPress: () => confirmRemove(plant) },
+      { text: "Cancel", style: "cancel" }
+    ]);
+  }
+
+  function openMoveMenu(plant: PlantInstance) {
+    Alert.alert("Move plant", plant.nickname, [
+      { text: "Move within this bed", onPress: () => setReplantingPlantId(plant.id) },
+      { text: "Move to another bed", onPress: () => setMovingToAnotherPlantId(plant.id) },
+      { text: "Cancel", style: "cancel" }
+    ]);
+  }
+
+  function handleBedPress(event: GestureResponderEvent) {
+    if (!replantingPlantId) {
+      return;
+    }
+
+    const { locationX, locationY } = event.nativeEvent;
+    const xPercent = Math.max(4, Math.min(88, (locationX / 320) * 100));
+    const yPercent = Math.max(4, Math.min(84, (locationY / 230) * 100));
+
+    Alert.alert("Replant here?", "Move this plant to the selected spot in the bed.", [
+      { text: "No", style: "cancel" },
+      {
+        text: "Yes",
+        onPress: () => {
+          onRepositionPlant(replantingPlantId, Math.round(xPercent), Math.round(yPercent));
+          setReplantingPlantId(null);
+        }
+      }
     ]);
   }
 
@@ -109,19 +160,31 @@ export function LocationManagementScreen({
               <TextInput value={depthInches} onChangeText={setDepthInches} keyboardType="numeric" placeholder="Depth in" placeholderTextColor={colors.textMuted} style={styles.input} />
             </View>
           ) : (
-            <View style={styles.overheadBed}>
+            <TouchableOpacity accessibilityRole="button" activeOpacity={0.92} style={[styles.overheadBed, replantingPlantId && styles.overheadBedActive]} onPress={handleBedPress}>
               {plants.slice(0, 9).map((plant, index) => {
                 const species = model.species.find((item) => item.id === plant.speciesId);
                 const knowledge = getPlantKnowledge(species, plant.nickname);
                 const spacing = getPlantPlanMetrics(species, plant.nickname).spacingInches;
-                const point = getPoint(index);
+                const point =
+                  plant.positionXPercent !== undefined && plant.positionYPercent !== undefined
+                    ? { left: `${plant.positionXPercent}%` as DimensionValue, top: `${plant.positionYPercent}%` as DimensionValue }
+                    : getPoint(index);
                 return (
-                  <TouchableOpacity key={plant.id} accessibilityRole="button" style={[styles.spacingCircle, { left: point.left, top: point.top, width: spacing * 2.2, height: spacing * 2.2, borderRadius: spacing * 1.1 }]} onPress={() => onOpenPlant(plant.id)}>
+                  <TouchableOpacity
+                    key={plant.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${plant.nickname}. Long press for actions.`}
+                    style={[styles.spacingCircle, plant.id === replantingPlantId && styles.spacingCircleMoving, { left: point.left, top: point.top, width: spacing * 2.2, height: spacing * 2.2, borderRadius: spacing * 1.1 }]}
+                    onPress={() => onOpenPlant(plant.id)}
+                    onLongPress={() => openPlantMenu(plant)}
+                    delayLongPress={350}
+                  >
                     <Text style={styles.spacingGlyph}>{knowledge.visual}</Text>
                   </TouchableOpacity>
                 );
               })}
-            </View>
+              {replantingPlantId ? <Text style={styles.replantHint}>Tap a new spot</Text> : null}
+            </TouchableOpacity>
           )}
         </View>
       ) : null}
@@ -154,16 +217,40 @@ export function LocationManagementScreen({
               </View>
             </TouchableOpacity>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moveRail}>
-              {placements.slice(0, 7).map((target) => (
-                <TouchableOpacity key={target.id} accessibilityRole="button" style={styles.moveChip} onPress={() => onMovePlant(plant.id, target)}>
-                  <Text style={styles.moveChipText}>Move to {target.label.replace("Raised ", "")}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity accessibilityRole="button" style={styles.removeChip} onPress={() => confirmRemove(plant)}>
-                <Text style={styles.removeChipText}>Remove</Text>
+            <TouchableOpacity accessibilityRole="button" style={styles.actionMenuButton} onPress={() => openPlantMenu(plant)}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.leafDeep} />
+              <Text style={styles.actionMenuText}>Plant actions</Text>
+            </TouchableOpacity>
+
+            {movingToAnotherPlantId === plant.id ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moveRail}>
+                {placements.slice(0, 7).map((target) => (
+                  <TouchableOpacity
+                    key={target.id}
+                    accessibilityRole="button"
+                    style={styles.moveChip}
+                    onPress={() => {
+                      onMovePlant(plant.id, target);
+                      setMovingToAnotherPlantId(null);
+                    }}
+                  >
+                    <Text style={styles.moveChipText}>Move to {target.label.replace("Raised ", "")}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : null}
+
+            <View style={styles.inlineActions}>
+              <TouchableOpacity accessibilityRole="button" style={styles.miniAction} onPress={() => confirmHarvest(plant)}>
+                <Text style={styles.miniActionText}>Harvest</Text>
               </TouchableOpacity>
-            </ScrollView>
+              <TouchableOpacity accessibilityRole="button" style={styles.miniAction} onPress={() => openMoveMenu(plant)}>
+                <Text style={styles.miniActionText}>Move</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" style={styles.removeMiniAction} onPress={() => confirmRemove(plant)}>
+                <Text style={styles.removeMiniActionText}>Remove</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         );
       })}
@@ -360,6 +447,10 @@ const styles = StyleSheet.create({
     borderColor: colors.soil,
     overflow: "hidden"
   },
+  overheadBedActive: {
+    borderColor: colors.sun,
+    borderWidth: 4
+  },
   spacingCircle: {
     position: "absolute",
     borderWidth: 2,
@@ -367,6 +458,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(94, 143, 76, 0.64)",
     alignItems: "center",
     justifyContent: "center"
+  },
+  spacingCircleMoving: {
+    backgroundColor: "rgba(244,200,95,0.72)",
+    borderColor: colors.white
+  },
+  replantHint: {
+    position: "absolute",
+    left: spacing.md,
+    bottom: spacing.md,
+    color: colors.white,
+    fontSize: typography.small,
+    fontWeight: "900",
+    backgroundColor: "rgba(36,79,55,0.8)",
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
   },
   spacingGlyph: {
     color: colors.white,
@@ -428,6 +535,50 @@ const styles = StyleSheet.create({
   moveRail: {
     gap: spacing.sm,
     paddingRight: spacing.lg
+  },
+  actionMenuButton: {
+    minHeight: 42,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceWarm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  actionMenuText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  inlineActions: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  miniAction: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceWarm,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  miniActionText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900"
+  },
+  removeMiniAction: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radii.pill,
+    backgroundColor: "#fff0e9",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  removeMiniActionText: {
+    color: colors.coral,
+    fontSize: typography.caption,
+    fontWeight: "900"
   },
   moveChip: {
     minHeight: 42,

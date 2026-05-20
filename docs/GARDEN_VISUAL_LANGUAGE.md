@@ -53,6 +53,7 @@ Visual garden elements should imply action:
 
 - Bed mini-maps open management.
 - Plant dots open plant detail.
+- Long-press plant dots open Harvest, Move, Rename, Details, and Remove actions.
 - Move chips relocate PlantInstances.
 - Remove actions ask for confirmation.
 - Add actions should preserve the selected bed/container/zone context.
@@ -62,3 +63,7 @@ The visual language should support recognition first, then action, then deeper r
 ## Planner Visuals
 
 Planner visuals should show plant spacing and warning zones. A tomato should visually require more space than basil. Overlap and crowding should feel visible before the user reads a warning.
+
+## Pattypan Landing
+
+The landing page should feel cinematic, warm, botanical, and premium. Use a garden-like full-screen visual treatment, cream/green buttons, the Pattypan name, and the tagline Your Heirloom Secret.

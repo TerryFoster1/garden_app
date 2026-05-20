@@ -1,15 +1,13 @@
 import { ComponentProps } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
-export type GardenTabKey = "today" | "scan" | "garden" | "planner" | "knowledge";
+export type GardenTabKey = "home" | "garden" | "library" | "profile";
 
 type IoniconName = ComponentProps<typeof Ionicons>["name"];
 
 export const navItems: Array<{ key: GardenTabKey; label: string; icon: IoniconName }> = [
-  { key: "today", label: "Today", icon: "sunny-outline" },
-  { key: "scan", label: "Scan", icon: "camera" },
-  { key: "garden", label: "Garden", icon: "leaf-outline" },
-  { key: "planner", label: "Planner", icon: "map-outline" },
-  { key: "knowledge", label: "Knowledge", icon: "search-outline" }
+  { key: "home", label: "Home", icon: "home-outline" },
+  { key: "garden", label: "My Garden", icon: "leaf-outline" },
+  { key: "library", label: "Library", icon: "book-outline" },
+  { key: "profile", label: "Profile", icon: "person-outline" }
 ];
-

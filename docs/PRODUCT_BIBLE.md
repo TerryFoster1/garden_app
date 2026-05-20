@@ -1,8 +1,12 @@
-# Garden App Product Bible
+# Pattypan Product Bible
+
+App name: Pattypan.
+
+Tagline: Your Heirloom Secret.
 
 ## Product Promise
 
-Garden App is a personalized garden operating system. It helps people understand what is growing, where it is growing, what it needs today, and what weather or seasonal pressure might change the plan.
+Pattypan is a personalized garden operating system. It helps people understand what is growing, where it is growing, what it needs today, and what weather or seasonal pressure might change the plan.
 
 It is not only a watering reminder app. The long-term product combines plant identification, garden mapping, weather-aware care, sun/shade planning, photo-based diagnosis, and deterministic care rules that keep AI suggestions from directly controlling a user's schedule.
 
@@ -40,11 +44,12 @@ The My Garden experience should make the product identity tangible: a living, vi
 
 ## Primary Navigation
 
-1. Today / Tasks
-2. Scan
-3. My Garden
-4. Planner
-5. Knowledge
+1. Home
+2. My Garden
+3. Library
+4. Profile
+
+Scan lives inside Add Plant and Library diagnose/search workflows. Planner lives inside My Garden, Bed Detail, Add/Edit Bed, and AI Optimize Bed workflows.
 
 ## Most-Used Actions
 
@@ -86,3 +91,7 @@ Garden App is not a plant tracker. It is a living digital twin of the user's rea
 The core objects are environment-first: location, indoor area, outdoor area, garden, bed, planter, container, species, plant instance, display name, photo, task, harvest schedule, weather context, diagnosis, and knowledge.
 
 The app should avoid duplicate indoor/outdoor questions. Once a workflow has selected indoor or outdoor, later steps should preserve that context unless the user intentionally changes it.
+
+## Landing / Auth Entry
+
+The first-open entry is a premium Pattypan landing screen with botanical garden styling, app name, tagline, Sign up, Sign in, and Learn more. Until auth exists, Sign up and Sign in enter local prototype mode.

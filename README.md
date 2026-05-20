@@ -1,6 +1,8 @@
-# Garden App
+# Pattypan
 
-Garden App is a mobile-first foundation for a personalized garden operating system: plant tracking, garden planning, photo-first identification, weather-aware care, and rule-validated AI recommendations.
+Pattypan is a mobile-first garden operating system with the tagline: Your Heirloom Secret.
+
+It helps build and operate a living digital twin of a real garden: beds, plants, containers, photos, care tasks, harvest timing, diagnosis, weather context, and rule-validated AI recommendations.
 
 ## Framework
 
@@ -110,15 +112,17 @@ git push -u origin main
 
 ## Current Scope
 
-- Mobile navigation skeleton for Today, Scan, My Garden, Planner, and Knowledge.
+- Clean mobile navigation: Home, My Garden, Library, Profile.
+- First-open Pattypan landing/auth entry screen. Sign up and Sign in both enter local prototype mode until real auth exists.
 - Onboarding, garden setup, settings, weather alerts, task calendar, and sun/shade setup are still early flows.
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, receive a mock identification, confirm or edit it, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
 - Live My Garden management loop: switch between outdoor beds, containers, and indoor plants; tap a bed/zone; add plants to that exact location; move plants between locations; remove only the personal plant instance; open real plant detail pages.
 - Bed detail editing: edit bed name/dimensions, see overhead plant placement, spacing circles, companion notes, and mocked planning warnings.
 - Plant operations: rename display name, mark watered, log harvest, move, remove, scan, and open useful plant detail.
-- Command center Today view: weather/status hero, urgent actions, quick actions, care/harvest schedule toggle, My Garden shortcut, and visual garden pulse.
-- Interactive Planner foundation: tap outdoor beds, add plants to a bed, view plant markers, dimensions, sun/shade indicators, spacing circles, and rule-style recommendations.
+- Home command center: weather/status hero, urgent actions, quick actions, care/harvest schedule toggle, My Garden shortcut, and visual garden pulse.
+- Planner functions are re-homed into My Garden, Bed Detail, Add/Edit Bed, and AI Optimize Bed. Planner is no longer a bottom-nav tab.
+- Scan is re-homed into Add Plant and Library diagnose/search workflows. Scan is no longer a bottom-nav tab.
 - Local-first persistence using AsyncStorage so plant add/move/remove changes survive app reloads on the device.
 - Entitlement/subscription service foundation with paywall disabled.
 - Temporary Expo web export for preview/testing only.
@@ -164,8 +168,10 @@ On a phone with Expo Go:
 5. Tap a bed or plant marker, then tap `Manage plants in this bed`.
 6. Use `Add plant here`, choose a plant, stage, and save.
 7. Tap the plant for its detail page.
-8. Use `Move` to return to its location manager, then move it to another bed/container/indoor zone.
-9. Use `Remove` and confirm that only that PlantInstance leaves the garden.
+8. Long-press a plant in bed detail to open Harvest, Move, Rename, Details, and Remove.
+9. Use `Harvest` to confirm “Harvest and remove this plant from the bed?”.
+10. Use `Move within this bed`, tap a new spot, then confirm “Replant here?”.
+11. Use `Remove` and confirm that only that PlantInstance leaves the garden.
 
 Android back behavior: from a managed bed/zone, tap a plant, then use the Android back gesture/button. It should return to the bed/zone manager; another back returns to My Garden.
 

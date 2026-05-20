@@ -68,15 +68,24 @@ export function TodayScreen({
 
   return (
     <View style={styles.screen}>
+      <View style={styles.homeHeader}>
+        <View>
+          <Text style={styles.greeting}>Good morning, {model.user.name}</Text>
+          <Text style={styles.homeTitle}>Your garden today</Text>
+          <Text style={styles.homeSubtitle}>Here's what's happening in your garden.</Text>
+        </View>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open profile" style={styles.profileButton} onPress={onOpenSettings}>
+          <Ionicons name="person-outline" size={26} color={colors.leafDeep} />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.hero}>
         <View style={styles.heroTopRow}>
           <View>
             <Text style={styles.locationText}>{model.user.locationLabel}</Text>
-            <Text style={styles.timeText}>{getDayPart()} garden check</Text>
+            <Text style={styles.timeText}>{getDayPart()} conditions</Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open profile settings" style={styles.roundButton} onPress={onOpenSettings}>
-            <Ionicons name="person-outline" size={22} color={colors.white} />
-          </TouchableOpacity>
+          <Ionicons name="location" size={22} color={colors.leafDeep} />
         </View>
 
         <View style={styles.weatherRow}>
@@ -96,26 +105,10 @@ export function TodayScreen({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.primaryActions}>
-        <TouchableOpacity accessibilityRole="button" style={styles.scanAction} onPress={onOpenScan}>
-          <View style={styles.actionIconLarge}>
-            <Ionicons name="camera" size={32} color={colors.leafDeep} />
-          </View>
-          <Text style={styles.scanTitle}>Scan Plant</Text>
-          <Text style={styles.scanSubtext}>Identify, diagnose, track growth</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity accessibilityRole="button" style={styles.taskAction} onPress={onOpenCalendar}>
-          <Text style={styles.taskNumber}>{actionableTasks.length}</Text>
-          <Text style={styles.taskActionTitle}>Tasks Now</Text>
-          <Text style={styles.taskActionText}>{completedToday > 0 ? `${completedToday} completed` : "Ready outside"}</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Needs Attention</Text>
+        <Text style={styles.sectionTitle}>Today's Tasks</Text>
         <TouchableOpacity accessibilityRole="button" onPress={onOpenCalendar}>
-          <Text style={styles.sectionLink}>All tasks</Text>
+          <Text style={styles.sectionLink}>View all</Text>
         </TouchableOpacity>
       </View>
 
@@ -124,6 +117,7 @@ export function TodayScreen({
         <QuickAction icon="map-outline" label="Add Bed" onPress={onAddGarden} />
         <QuickAction icon="medkit-outline" label="Diagnose" onPress={onOpenScan} />
         <QuickAction icon="basket-outline" label="Harvest" onPress={() => setScheduleMode("harvest")} />
+        <QuickAction icon="camera-outline" label="Photo Update" onPress={onOpenScan} />
       </View>
 
       <View style={styles.segmented}>
@@ -279,16 +273,50 @@ const styles = StyleSheet.create({
     gap: spacing.lg
   },
   hero: {
-    borderRadius: 34,
+    borderRadius: 28,
     padding: spacing.lg,
-    backgroundColor: colors.leafDeep,
-    minHeight: 244,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 210,
     justifyContent: "space-between",
     shadowColor: colors.shadow,
     shadowOpacity: 0.18,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 8
+  },
+  homeHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md
+  },
+  greeting: {
+    color: colors.leafDeep,
+    fontSize: typography.body,
+    fontWeight: "900"
+  },
+  homeTitle: {
+    color: colors.leafDeep,
+    fontSize: 38,
+    fontWeight: "900",
+    lineHeight: 44
+  },
+  homeSubtitle: {
+    color: colors.textMuted,
+    fontSize: typography.body,
+    fontWeight: "700"
+  },
+  profileButton: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center"
   },
   heroTopRow: {
     flexDirection: "row",
@@ -297,12 +325,12 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   locationText: {
-    color: colors.surfaceWarm,
+    color: colors.leafDeep,
     fontSize: typography.small,
     fontWeight: "800"
   },
   timeText: {
-    color: colors.white,
+    color: colors.text,
     fontSize: typography.title,
     fontWeight: "900",
     lineHeight: 34
@@ -322,7 +350,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl
   },
   temperatureText: {
-    color: colors.sun,
+    color: colors.leafDeep,
     fontSize: 58,
     fontWeight: "900",
     lineHeight: 62
@@ -332,13 +360,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs
   },
   conditionTitle: {
-    color: colors.white,
+    color: colors.text,
     fontSize: typography.section,
     fontWeight: "900",
     lineHeight: 24
   },
   conditionText: {
-    color: colors.surfaceWarm,
+    color: colors.textMuted,
     fontSize: typography.small,
     lineHeight: 19,
     marginTop: spacing.xs
@@ -347,7 +375,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceWarm,
+    backgroundColor: "#eef6e9",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,

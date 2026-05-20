@@ -4,7 +4,7 @@
 
 - Expo + TypeScript app scaffold.
 - Mobile-first navigation.
-- Today, Scan, My Garden, Planner, Knowledge, Plant Detail, Add Plant, Garden Setup, Settings placeholders.
+- Pattypan landing, Home, My Garden, Library, Profile, Plant Detail, Add Plant, Garden Setup, and settings/profile placeholders.
 - Domain model and mock Kitchener/Waterloo garden data.
 - Provider interfaces for weather, plant ID, AI, notifications, personal stations.
 - Care rules and sun/weather engine stubs.

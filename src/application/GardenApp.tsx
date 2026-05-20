@@ -7,11 +7,12 @@ import { GardenTabKey, navItems } from "../navigation/navItems";
 import { AddPlantFlowScreen } from "../features/add-plant/AddPlantFlowScreen";
 import { GardenSetupFlowScreen } from "../features/garden-setup/GardenSetupFlowScreen";
 import { KnowledgeScreen } from "../features/knowledge/KnowledgeScreen";
+import { LandingScreen } from "../features/landing/LandingScreen";
 import { GardenPlacement, getGardenPlacements, LocationManagementScreen } from "../features/my-garden/LocationManagementScreen";
 import { MyGardenScreen } from "../features/my-garden/MyGardenScreen";
 import { OnboardingScreen } from "../features/onboarding/OnboardingScreen";
-import { PlannerScreen } from "../features/planner/PlannerScreen";
 import { PlantDetailScreen } from "../features/plant-detail/PlantDetailScreen";
+import { ProfileScreen } from "../features/profile/ProfileScreen";
 import { ScanScreen } from "../features/scan/ScanScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { TaskCalendarScreen } from "../features/tasks/TaskCalendarScreen";
@@ -23,10 +24,12 @@ import { loadPersistedGardenModel, persistGardenModel } from "../services/localP
 import { colors, spacing, typography } from "../theme/tokens";
 
 type OverlayScreen =
+  | "landing"
   | "onboarding"
   | "plantDetail"
   | "addPlant"
   | "manageLocation"
+  | "scan"
   | "gardenSetup"
   | "settings"
   | "calendar"
@@ -34,8 +37,8 @@ type OverlayScreen =
   | null;
 
 export function GardenApp() {
-  const [activeTab, setActiveTab] = useState<GardenTabKey>("today");
-  const [overlay, setOverlay] = useState<OverlayScreen>("onboarding");
+  const [activeTab, setActiveTab] = useState<GardenTabKey>("home");
+  const [overlay, setOverlay] = useState<OverlayScreen>("landing");
   const [selectedPhotoUri, setSelectedPhotoUri] = useState<string | null>(null);
   const [lastAddedPlantId, setLastAddedPlantId] = useState<string | null>(null);
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
@@ -105,8 +108,7 @@ export function GardenApp() {
   }
 
   function handleOpenScan() {
-    setOverlay(null);
-    setActiveTab("scan");
+    setOverlay("scan");
   }
 
   function handleBack() {
@@ -267,6 +269,13 @@ export function GardenApp() {
     setSelectedPlacement(placement);
   }
 
+  function handleRepositionPlant(plantId: string, xPercent: number, yPercent: number) {
+    setModel((current) => ({
+      ...current,
+      plantInstances: current.plantInstances.map((plant) => (plant.id === plantId ? { ...plant, positionXPercent: xPercent, positionYPercent: yPercent } : plant))
+    }));
+  }
+
   function handleRenamePlant(plantId: string, displayName: string) {
     setModel((current) => ({
       ...current,
@@ -381,8 +390,16 @@ export function GardenApp() {
   }
 
   function renderMainScreen() {
+    if (overlay === "landing") {
+      return <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />;
+    }
+
     if (overlay === "onboarding") {
       return <OnboardingScreen onComplete={() => setOverlay(null)} onStartGarden={() => setOverlay("gardenSetup")} />;
+    }
+
+    if (overlay === "scan") {
+      return <ScanScreen selectedPhotoUri={selectedPhotoUri} onPhotoSelected={handlePhotoSelected} onAddPlant={() => handleOpenAddPlant(null)} />;
     }
 
     if (overlay === "plantDetail") {
@@ -415,6 +432,7 @@ export function GardenApp() {
           onOpenPlant={handleOpenPlant}
           onMovePlant={handleMovePlant}
           onRemovePlant={handleRemovePlant}
+          onRepositionPlant={handleRepositionPlant}
           onUpdateBed={handleUpdateBed}
         />
       );
@@ -436,12 +454,12 @@ export function GardenApp() {
       return <WeatherAlertsScreen alerts={model.weatherAlerts} onBack={() => setOverlay(null)} />;
     }
 
-    if (activeTab === "today") {
+    if (activeTab === "home") {
       return (
         <TodayScreen
           model={model}
           onOpenCalendar={() => setOverlay("calendar")}
-          onOpenSettings={() => setOverlay("settings")}
+          onOpenSettings={() => setActiveTab("profile")}
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
           onOpenPlant={handleOpenPlant}
           onOpenScan={handleOpenScan}
@@ -452,10 +470,6 @@ export function GardenApp() {
           onSnoozeTask={handleSnoozeTask}
         />
       );
-    }
-
-    if (activeTab === "scan") {
-      return <ScanScreen selectedPhotoUri={selectedPhotoUri} onPhotoSelected={handlePhotoSelected} onAddPlant={() => handleOpenAddPlant(null)} />;
     }
 
     if (activeTab === "garden") {
@@ -469,11 +483,15 @@ export function GardenApp() {
       );
     }
 
-    if (activeTab === "planner") {
-      return <PlannerScreen model={model} onOpenGardenSetup={() => setOverlay("gardenSetup")} onOpenPlacement={handleOpenPlacement} onAddPlantToPlacement={(placement) => handleOpenAddPlant(placement)} />;
+    if (activeTab === "library") {
+      return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} onDiagnoseByPhoto={handleOpenScan} />;
     }
 
-    return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} />;
+    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} />;
+  }
+
+  if (overlay === "landing") {
+    return <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />;
   }
 
   return (
@@ -483,17 +501,16 @@ export function GardenApp() {
         <View style={styles.navBar}>
           {navItems.map((item) => {
             const isActive = item.key === activeTab;
-            const isScan = item.key === "scan";
 
             return (
               <TouchableOpacity
                 key={item.key}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
-                style={[styles.navItem, isActive && styles.activeNavItem, isScan && styles.scanNavItem]}
+                style={[styles.navItem, isActive && styles.activeNavItem]}
                 onPress={() => setActiveTab(item.key)}
               >
-                <Ionicons name={item.icon} size={isScan ? 30 : 22} color={isActive || isScan ? colors.leafDeep : colors.textMuted} />
+                <Ionicons name={item.icon} size={22} color={isActive ? colors.leafDeep : colors.textMuted} />
                 <Text style={[styles.navLabel, isActive && styles.activeNavLabel]}>{item.label}</Text>
               </TouchableOpacity>
             );
@@ -602,18 +619,6 @@ const styles = StyleSheet.create({
     gap: 4,
     minHeight: 62,
     borderRadius: 24
-  },
-  scanNavItem: {
-    transform: [{ translateY: -14 }],
-    backgroundColor: colors.sun,
-    borderRadius: 32,
-    minHeight: 76,
-    maxWidth: 82,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6
   },
   activeNavItem: {
     backgroundColor: colors.surfaceWarm
