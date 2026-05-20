@@ -34,6 +34,7 @@ This mirrors the sibling app convention of keeping `domain`, `data`, `services`,
 - SunWeatherEngine: sun path, orientation, obstructions, microclimate estimation, and placement warnings.
 - Plant photo service: local photo history lookup, latest profile photo resolution, and future upload/sync boundaries.
 - Supabase client: disabled-by-default public-beta foundation. It only creates a client when `EXPO_PUBLIC_ENABLE_SUPABASE=true`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are configured.
+- Supabase bridge adapters: auth and repository boundaries exist for public beta, but local alpha auth/persistence remain the active runtime path.
 
 ## Backend Direction
 

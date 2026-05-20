@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { GardenHomeModel, NotificationPreference } from "../../domain";
 import type { EntitlementResult } from "../../services/entitlements/entitlementService";
 import { premiumPlan } from "../../services/entitlements/subscriptionProvider";
+import type { SupabaseBridgeStatus } from "../../services/supabase";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type ProfileScreenProps = {
@@ -14,6 +15,7 @@ type ProfileScreenProps = {
   onUpdateProfile: (updates: { name: string; locationLabel: string; notificationPreferences: NotificationPreference[] }) => void;
   onResetLocalData: () => void;
   entitlements: EntitlementResult;
+  supabaseStatus: SupabaseBridgeStatus;
 };
 
 const defaultPreferences: NotificationPreference[] = [
@@ -32,7 +34,7 @@ const preferenceLabels: Record<string, { icon: keyof typeof Ionicons.glyphMap; l
   "pref-harvest": { icon: "basket-outline", label: "Harvest reminders", helper: "Harvest windows and crop checks" }
 };
 
-export function ProfileScreen({ model, onOpenSettings, onOpenPremium, onUpdateProfile, onResetLocalData, entitlements }: ProfileScreenProps) {
+export function ProfileScreen({ model, onOpenSettings, onOpenPremium, onUpdateProfile, onResetLocalData, entitlements, supabaseStatus }: ProfileScreenProps) {
   const initialPreferences = useMemo(() => mergePreferences(model.notificationPreferences, model.user.id), [model.notificationPreferences, model.user.id]);
   const [displayName, setDisplayName] = useState(model.user.name);
   const [locationLabel, setLocationLabel] = useState(model.user.locationLabel);
@@ -140,8 +142,13 @@ export function ProfileScreen({ model, onOpenSettings, onOpenPremium, onUpdatePr
           <Status label="Weather provider" value={process.env.EXPO_PUBLIC_WEATHER_PROVIDER || "not set"} />
           <Status label="Plant ID provider" value={process.env.EXPO_PUBLIC_PLANT_ID_PROVIDER || "not set"} />
           <Status label="AI provider" value={process.env.EXPO_PUBLIC_AI_PROVIDER || "not set"} />
+          <Status label="Supabase bridge" value={supabaseStatus.label} />
           <Status label="Notifications" value="local" />
           <Status label="Paywall" value={entitlements.paywallEnabled ? "on" : "off"} />
+        </View>
+        <View style={styles.bridgeNotice}>
+          <Ionicons name={supabaseStatus.enabled ? "cloud-done-outline" : "cloud-offline-outline"} size={20} color={colors.leafDeep} />
+          <Text style={styles.bridgeText}>{supabaseStatus.detail}</Text>
         </View>
       </View>
 
@@ -379,6 +386,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center"
+  },
+  bridgeNotice: {
+    borderRadius: 18,
+    backgroundColor: colors.surfaceWarm,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm
+  },
+  bridgeText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    lineHeight: 18
   },
   statusValue: {
     color: colors.leafDeep,

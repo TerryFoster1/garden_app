@@ -36,6 +36,11 @@ Pattypan remains local-first by default:
 - Create profile row after sign-up.
 - Store account state in backend tables, not local app state.
 
+Current bridge status:
+- `src/services/supabase/authAdapter.ts` defines the future Supabase auth boundary.
+- The app still uses local alpha auth until the bridge is intentionally switched over.
+- Disabled mode returns safe local-alpha responses and does not interrupt current sign-up/sign-in.
+
 ## Phase 4: Repository Adapter
 
 Add a Supabase repository adapter with the same conceptual operations as the local alpha:
@@ -52,6 +57,11 @@ Add a Supabase repository adapter with the same conceptual operations as the loc
 - create/update care task
 
 Do not migrate all UI at once. Switch one workflow at a time behind the Supabase flag.
+
+Current bridge status:
+- `src/services/supabase/repositoryAdapter.ts` defines the future sync boundary.
+- Local persistence remains the source of truth.
+- Supabase plant/photo sync methods intentionally do not run until a real adapter is implemented.
 
 ## Phase 5: Photo Storage
 
@@ -93,4 +103,3 @@ Do not remove local alpha storage until:
 - Provider proxy works.
 - Stripe webhook state is tested.
 - Export/reset path exists for local alpha testers.
-

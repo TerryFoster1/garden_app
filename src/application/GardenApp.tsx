@@ -25,6 +25,7 @@ import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, Plant
 import { clearAllLocalAppData, loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
 import { loadLocalSession, LocalSession } from "../services/localAuth";
 import { getBridgeEntitlements, parseEntitlementConfig } from "../services/entitlements/entitlementService";
+import { getSupabaseBridgeStatus } from "../services/supabase";
 import { geocodeLocation, weatherProvider } from "../services/weather/weatherProvider";
 import { colors, radii, spacing, typography } from "../theme/tokens";
 
@@ -72,6 +73,7 @@ export function GardenApp() {
       adminEmails: process.env.EXPO_PUBLIC_ADMIN_EMAILS
     })
   });
+  const supabaseStatus = getSupabaseBridgeStatus();
 
   useEffect(() => {
     let isMounted = true;
@@ -922,6 +924,7 @@ export function GardenApp() {
       <ProfileScreen
         model={model}
         entitlements={entitlements}
+        supabaseStatus={supabaseStatus}
         onOpenSettings={() => setOverlay("settings")}
         onOpenPremium={() => setOverlay("premium")}
         onUpdateProfile={handleUpdateProfile}
