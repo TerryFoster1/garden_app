@@ -42,7 +42,7 @@ If the dashboard shows the standard Vercel records, GoDaddy should have:
 | Type | Name | Value | Notes |
 | --- | --- | --- | --- |
 | A | `@` | `76.76.21.21` or the Vercel-recommended apex IP shown in Project Settings | Root domain `pattypan.ca` |
-| CNAME | `www` | `cname.vercel-dns.com` or the Vercel-recommended CNAME shown in Project Settings | `www.pattypan.ca` |
+| CNAME | `www` | `cname.vercel-dns-0.com` or the Vercel-recommended CNAME shown in Project Settings | `www.pattypan.ca` |
 
 Remove conflicting parked-domain, forwarding, or duplicate A/CNAME records for `@` and `www`.
 
