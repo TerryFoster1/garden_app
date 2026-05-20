@@ -3,6 +3,7 @@ export * from "./careRulesEngine";
 export * from "./notificationService";
 export * from "./plantIdentificationProvider";
 export * from "./sunWeatherEngine";
+export * from "./supabase";
 export * from "./weather/personalWeatherStationProvider";
 export * from "./weather/weatherProvider";
 export * from "./entitlements/entitlementService";

@@ -85,6 +85,9 @@ Required placeholders:
 - `EXPO_PUBLIC_APP_NAME=Pattypan`
 - `EXPO_PUBLIC_APP_DOMAIN=https://pattypan.ca`
 - `EXPO_PUBLIC_APP_URL`
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_ENABLE_SUPABASE=false`
 - `EXPO_PUBLIC_PLANT_ID_PROVIDER=plantnet`
 - `EXPO_PUBLIC_PLANT_ID_API_KEY`
 - `EXPO_PUBLIC_AI_PROVIDER`
@@ -103,6 +106,8 @@ Plant identification uses PlantNet when `EXPO_PUBLIC_PLANT_ID_PROVIDER=plantnet`
 Weather uses OpenWeather when `EXPO_PUBLIC_WEATHER_PROVIDER=openweather` and `EXPO_PUBLIC_WEATHER_API_KEY` are available. Home converts forecast signals into garden alerts such as frost risk, skip watering after rain, heat stress, wind support, and mildew risk.
 
 AI uses OpenAI when `EXPO_PUBLIC_AI_PROVIDER=openai` and `EXPO_PUBLIC_AI_API_KEY` are available. Ask Pattypan, topic-aware Library answers, and AI Optimize Bed use OpenAI first and local rule-based fallbacks if unavailable.
+
+Supabase is disabled by default with `EXPO_PUBLIC_ENABLE_SUPABASE=false`. Local alpha auth and persistence remain the default until a real Supabase project, schema, RLS policies, and repository adapter are connected.
 
 ## GitHub Setup
 

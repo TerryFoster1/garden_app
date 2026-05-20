@@ -33,6 +33,7 @@ This mirrors the sibling app convention of keeping `domain`, `data`, `services`,
 - Notification service: future Expo push notifications and local reminders.
 - SunWeatherEngine: sun path, orientation, obstructions, microclimate estimation, and placement warnings.
 - Plant photo service: local photo history lookup, latest profile photo resolution, and future upload/sync boundaries.
+- Supabase client: disabled-by-default public-beta foundation. It only creates a client when `EXPO_PUBLIC_ENABLE_SUPABASE=true`, `EXPO_PUBLIC_SUPABASE_URL`, and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are configured.
 
 ## Backend Direction
 
@@ -41,6 +42,8 @@ The current alpha still works locally, but public beta needs real server-side ac
 Recommended public-beta backend: Supabase.
 
 Supabase is the best first backend fit because it gives Pattypan email/password auth, Postgres, Row Level Security, private file storage, and Edge Functions in one Expo-friendly stack. The relational model maps cleanly to users, gardens, beds, plant instances, photos, diagnosis history, tasks, weather cache, subscriptions, and entitlement overrides. See `docs/PUBLIC_BETA_BACKEND_PLAN.md`.
+
+Current code includes only the disabled Supabase client foundation, TypeScript database shape, schema/RLS drafts, and migration docs. The active repository remains local alpha mode until a Supabase repository adapter is added and deliberately enabled.
 
 Neon Postgres plus custom Vercel APIs remains a future option if Pattypan needs more custom server architecture later, but it would require building more auth, storage, and access-control infrastructure before beta.
 
