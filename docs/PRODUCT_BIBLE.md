@@ -20,6 +20,8 @@ The My Garden experience should make ownership clear without becoming the full m
 
 The photo system is core to the emotional product. A plant should become recognizable as the user's plant over time: latest photo as profile image, older photos as growth history, diagnosis photos as part of memory, and weekly updates as the garden's living timeline.
 
+Plant Detail should not behave like a wiki page. It is the status page for one living PlantInstance: latest photo, current condition, urgent tasks, quick actions, and photo memory first. Species-level education belongs behind collapsed sections or in Library.
+
 ## Core User Jobs
 
 - Identify a plant, pest, disease, mold, weed, or stress signal from a photo.
@@ -102,6 +104,8 @@ The current prototype now supports the first real garden-management loop:
 
 Plant detail information is seeded locally but should feel practical: water, light, feeding, soil, spacing, companions, bad companions, pests/diseases, natural controls, seed/transplant notes, pruning/harvest notes, toxicity warnings, current tasks, and recent activity. Photo identification is provider-backed through PlantNet when configured, with local fallback for development/offline failure.
 
+That information should be progressively disclosed. Plant Detail should surface the plant's status and actions first, then let the user expand deeper care or reference sections only when needed.
+
 ## Operating System Correction
 
 Garden App is not a plant tracker. It is a living digital twin of the user's real garden environment. The product should help users build, plan, manage, diagnose, harvest, and operate that environment.
@@ -109,6 +113,8 @@ Garden App is not a plant tracker. It is a living digital twin of the user's rea
 The core objects are environment-first: location, indoor area, outdoor area, garden, bed, planter, container, species, plant instance, display name, photo, task, harvest schedule, weather context, diagnosis, and knowledge.
 
 The app should avoid duplicate indoor/outdoor questions. Once a workflow has selected indoor or outdoor, later steps should preserve that context unless the user intentionally changes it.
+
+Normal startup should feel like a real first-use product, not a demo. Fake Kitchener/Waterloo beds and plants must not appear unless the user chooses Load Demo Garden.
 
 ## Seed Workflow Direction
 

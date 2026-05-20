@@ -73,6 +73,12 @@ Mobile garden surfaces should reveal complexity progressively. My Garden is simp
 
 The overview should not show every interaction at once. If the user needs spacing, moving, harvesting, companion warnings, or AI optimization, they should tap a bed first.
 
+## Plant Detail Mobile Check-In
+
+Plant Detail should work as a one-handed garden check-in. The user should immediately see the latest photo, the current condition, and the next action before any reference content appears.
+
+The mobile order is photo hero, compact action rail, current tasks, photo timeline, tiny activity, then collapsed reference sections. This keeps the screen useful outdoors and prevents Plant Detail from becoming a scrolling wiki page.
+
 ## Indoor / Outdoor Model
 
 My Garden is organized around Outdoor and Indoor ownership.

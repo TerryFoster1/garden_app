@@ -10,6 +10,8 @@ type TodayScreenProps = {
   onOpenWeatherAlerts: () => void;
   onOpenPlant: (plantId: string) => void;
   onAddPlant: () => void;
+  onCreateGarden: () => void;
+  onLoadDemoGarden: () => void;
   onCompleteTask: (taskId: string) => void;
   onSnoozeTask: (taskId: string) => void;
 };
@@ -37,8 +39,10 @@ const taskIcons: Record<CareTask["type"], keyof typeof Ionicons.glyphMap> = {
   "hardening-off": "leaf-outline"
 };
 
-export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCompleteTask, onSnoozeTask }: TodayScreenProps) {
+export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCreateGarden, onLoadDemoGarden, onCompleteTask, onSnoozeTask }: TodayScreenProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const hasLocation = Boolean(model.user.locationLabel.trim()) && !(model.user.latitude === 0 && model.user.longitude === 0);
+  const hasGardenContent = model.gardens.length > 0 || model.beds.length > 0 || model.plantInstances.length > 0;
 
   const actionableTasks = useMemo(
     () =>
@@ -62,9 +66,37 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
         <Text style={styles.pageTitle}>{homeTitle}</Text>
       </View>
 
-      <WeatherHero model={model} conditionSummary={conditionSummary} urgentCount={urgentCount} alertSummary={alertSummary} onPressAlerts={onOpenWeatherAlerts} />
+      {hasLocation ? (
+        <WeatherHero model={model} conditionSummary={conditionSummary} urgentCount={urgentCount} alertSummary={alertSummary} onPressAlerts={onOpenWeatherAlerts} />
+      ) : (
+        <View style={styles.locationSetup}>
+          <Ionicons name="location-outline" size={28} color={colors.leafDeep} />
+          <Text style={styles.emptyTitle}>Set your location</Text>
+          <Text style={styles.emptyText}>Pattypan needs a city or address before it can use real OpenWeather conditions for frost, rain, heat, wind, and mildew risk.</Text>
+        </View>
+      )}
 
-      <View style={styles.checklistHeader}>
+      {!hasGardenContent ? (
+        <View style={styles.startGardenPanel}>
+          <Text style={styles.sectionEyebrow}>First use</Text>
+          <Text style={styles.sectionTitle}>Start your garden</Text>
+          <Text style={styles.emptyText}>Your garden is empty. Add your first plant, map a bed, or load the sample garden from setup when you want practice data.</Text>
+          <TouchableOpacity accessibilityRole="button" style={styles.startPrimary} onPress={onAddPlant}>
+            <Ionicons name="leaf-outline" size={20} color={colors.white} />
+            <Text style={styles.doneText}>Add Plant</Text>
+          </TouchableOpacity>
+          <View style={styles.startActions}>
+            <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onCreateGarden}>
+              <Text style={styles.secondaryText}>Create Garden</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onLoadDemoGarden}>
+              <Text style={styles.secondaryText}>Load Demo Garden</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      {hasGardenContent ? <View style={styles.checklistHeader}>
         <View>
           <Text style={styles.sectionEyebrow}>Today's actions</Text>
           <Text style={styles.sectionTitle}>{actionableTasks.length > 0 ? `${actionableTasks.length} things need attention` : "Nothing urgent"}</Text>
@@ -75,9 +107,9 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
             <Text style={styles.urgentPillText}>{urgentCount} urgent</Text>
           </View>
         ) : null}
-      </View>
+      </View> : null}
 
-      <View style={styles.checklist}>
+      {hasGardenContent ? <View style={styles.checklist}>
         {actionableTasks.length > 0 ? (
           actionableTasks.map((task) => {
             const isExpanded = expandedTaskId === task.id;
@@ -104,9 +136,9 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
             </View>
           </View>
         )}
-      </View>
+      </View> : null}
 
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add a plant" style={styles.addPlantCta} onPress={onAddPlant}>
+      {hasGardenContent ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add a plant" style={styles.addPlantCta} onPress={onAddPlant}>
         <View style={styles.ctaArtwork}>
           <View style={styles.cameraOrb}>
             <Ionicons name="camera" size={26} color={colors.white} />
@@ -120,7 +152,7 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
           <Text style={styles.ctaText}>Scan or search, then place it in your garden.</Text>
         </View>
         <Ionicons name="chevron-forward" size={22} color={colors.white} />
-      </TouchableOpacity>
+      </TouchableOpacity> : null}
     </View>
   );
 }
@@ -676,6 +708,35 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "700",
     marginTop: 2
+  },
+  locationSetup: {
+    borderRadius: 28,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm
+  },
+  startGardenPanel: {
+    borderRadius: 30,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md
+  },
+  startPrimary: {
+    minHeight: 50,
+    borderRadius: radii.pill,
+    backgroundColor: colors.leafDeep,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  startActions: {
+    flexDirection: "row",
+    gap: spacing.sm
   },
   addPlantCta: {
     minHeight: 112,

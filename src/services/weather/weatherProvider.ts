@@ -24,6 +24,12 @@ export type WeatherProvider = {
   getAlerts(latitude: number, longitude: number): Promise<WeatherAlert[]>;
 };
 
+export type GeocodedLocation = {
+  label: string;
+  latitude: number;
+  longitude: number;
+};
+
 const weatherProviderName = process.env.EXPO_PUBLIC_WEATHER_PROVIDER?.toLowerCase();
 const openWeatherApiKey = process.env.EXPO_PUBLIC_WEATHER_API_KEY;
 const mockWeatherEnabled = process.env.EXPO_PUBLIC_ENABLE_MOCK_WEATHER !== "false";
@@ -126,7 +132,7 @@ async function getOpenWeatherCurrent(latitude: number, longitude: number, apiKey
 
   return {
     id: `openweather-current-${Date.now()}`,
-    locationLabel: data.name ? `${data.name}, Ontario` : "Kitchener/Waterloo, Ontario",
+    locationLabel: data.name ?? "Saved location",
     capturedAt: new Date().toISOString(),
     temperatureC,
     humidityPercent: Math.round(data.main?.humidity ?? 0),
@@ -182,4 +188,31 @@ export function buildGardenWeatherAlerts(current: WeatherSnapshot, hourly: Hourl
   }
 
   return alerts;
+}
+
+export async function geocodeLocation(label: string): Promise<GeocodedLocation | null> {
+  if (weatherProviderName !== "openweather" || !openWeatherApiKey || !label.trim()) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(label.trim())}&limit=1&appid=${encodeURIComponent(openWeatherApiKey)}`);
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as Array<{ name?: string; state?: string; country?: string; lat?: number; lon?: number }>;
+    const result = data[0];
+    if (typeof result?.lat !== "number" || typeof result.lon !== "number") {
+      return null;
+    }
+
+    return {
+      label: [result.name, result.state, result.country].filter(Boolean).join(", ") || label,
+      latitude: result.lat,
+      longitude: result.lon
+    };
+  } catch {
+    return null;
+  }
 }

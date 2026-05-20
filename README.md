@@ -106,37 +106,31 @@ AI uses OpenAI when `EXPO_PUBLIC_AI_PROVIDER=openai` and `EXPO_PUBLIC_AI_API_KEY
 
 ## GitHub Setup
 
-Git is initialized locally on `main`. No GitHub remote is configured yet.
-
-Recommended repo name: `garden-app`.
-
-To create and push with GitHub CLI:
+Git is initialized locally on `main` and the GitHub remote is:
 
 ```bash
-gh repo create garden-app --private --source=. --remote=origin --push
-```
-
-Or create an empty GitHub repo named `garden-app`, then run:
-
-```bash
-git remote add origin https://github.com/<your-username>/garden-app.git
-git push -u origin main
+https://github.com/TerryFoster1/garden_app.git
 ```
 
 ## Current Scope
 
+- Clean first-use startup: Pattypan no longer loads fake gardens/plants by default. First launch goes through landing, local prototype profile setup, location entry, then Add Plant, Create Garden, or Load Demo Garden.
+- Demo mode is explicit through `Load Demo Garden`; normal mode starts empty.
 - Clean mobile navigation: Home, My Garden, Library, Profile.
-- First-open Pattypan landing/auth entry screen. Sign up and Sign in both enter local prototype mode until real auth exists.
-- Onboarding, garden setup, settings, weather alerts, task calendar, and sun/shade setup are still early flows.
+- First-open Pattypan landing/auth entry screen. Sign up and Sign in now require local email/password forms before app access.
+- Local prototype auth persists a session and a salted non-cryptographic password hash on-device. This is not production-secure; public launch needs server-side auth.
+- Onboarding requires a geocodable location before saving weather context, then scaffolds notification categories for morning briefs, watering, weather warnings, harvest, and weekly photos.
+- Garden setup uses labeled bed type and dimension fields. Sun/shade mapping is optional and unknown sun/moisture is labeled honestly until mapped.
 - Mock Kitchener/Waterloo garden data.
 - First Scan/Add Plant loop: take photo or pick from library, send the image to PlantNet when configured, review multiple possible matches with confidence percentages, confirm or edit the selected match, choose a bed/container/indoor zone, and create a local plant instance with starter tasks.
 - Add Plant autocomplete: type a plant name, common alias, or scientific name to search the local seed index without browsing a giant visible plant list.
 - Live My Garden management loop: switch between outdoor beds, containers, and indoor plants; tap a bed/zone; add plants to that exact location; move plants between locations; remove only the personal plant instance; open real plant detail pages.
-- Bed detail editing: edit bed name/dimensions, see overhead plant placement, spacing circles, companion notes, and mocked planning warnings.
+- Bed detail editing: edit bed name/dimensions, see overhead plant placement, spacing circles, companion notes, local planning warnings, honest sun/moisture states, and a visible move mode.
 - Plant operations: rename display name, mark watered, log harvest, move, remove, scan, and open useful plant detail.
 - Home command center: atmospheric weather/status hero, urgent action checklist, and one Add Plant CTA.
 - OpenWeather-backed Home intelligence: current conditions refresh from the provider when configured, then Pattypan derives garden action alerts.
 - Library intelligence: Ask Pattypan, topic-aware Library questions, and useful topic screens for pests, diseases, plant care, propagation, and growing from seed.
+- Dedicated diagnosis flow: take/pick a photo, optionally link a PlantInstance, choose symptoms, run PlantNet/OpenAI explanation, and save a diagnosis photo plus follow-up task.
 - AI Optimize Bed: OpenAI-backed bed review with local rule fallback for overcrowding, spacing, airflow, and companion suggestions.
 - Planner functions are re-homed into My Garden, Bed Detail, Add/Edit Bed, and AI Optimize Bed. Planner is no longer a bottom-nav tab.
 - Scan is re-homed into Add Plant and Library diagnose/search workflows. Scan is no longer a bottom-nav tab.
@@ -155,8 +149,8 @@ Mocked or fallback:
 - AI recommendations fall back to local rules if OpenAI is unavailable.
 - Weather falls back to the local Kitchener/Waterloo snapshot if OpenWeather is unavailable.
 - Personal weather station providers.
-- Notifications.
-- Auth, accounts, saved user data, and subscription lookups.
+- Production push notifications. Local notification preference categories are scaffolded.
+- Production auth and subscription lookups. Local email/password auth is prototype-only.
 - Sun/moisture status, companion checks, and spacing warnings remain partly local/rule-based.
 - Harvest estimates are knowledge/rule based, not photo adjusted yet.
 - Plant knowledge is a useful mock dataset, not a live provider.
@@ -179,6 +173,10 @@ Real foundation:
 - Plant photo timeline and latest-photo profile behavior in local persisted state.
 - Responsive static Expo web build for Pattypan.ca.
 - Entitlement model for future free, trial, premium, admin, lifetime, and comped access.
+
+## First-Use Testing
+
+Fresh installs use the v2 local persistence key and start empty. Profile includes `Reset local app data`, which clears the local account/session, profile, gardens, plants, tasks, photos, diagnosis records, and cached demo data. Use `Load Demo Garden` only when you intentionally want sample Kitchener/Waterloo beds and plants.
 
 ## Test The Live Garden Loop
 

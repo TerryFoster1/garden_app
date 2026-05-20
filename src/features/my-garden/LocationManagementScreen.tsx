@@ -32,6 +32,7 @@ type LocationManagementScreenProps = {
   onRemovePlant: (plantId: string) => void;
   onRepositionPlant: (plantId: string, xPercent: number, yPercent: number) => void;
   onUpdateBed: (bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) => void;
+  onDiagnose?: () => void;
 };
 
 export function LocationManagementScreen({
@@ -43,7 +44,8 @@ export function LocationManagementScreen({
   onMovePlant,
   onRemovePlant,
   onRepositionPlant,
-  onUpdateBed
+  onUpdateBed,
+  onDiagnose
 }: LocationManagementScreenProps) {
   const [isEditingBed, setIsEditingBed] = useState(false);
   const [replantingPlantId, setReplantingPlantId] = useState<string | null>(null);
@@ -154,10 +156,16 @@ export function LocationManagementScreen({
       <ScreenHeader onBack={onBack} eyebrow={placement.kind} title={placement.label} subtitle={bed ? `${bed.lengthFeet}ft x ${bed.widthFeet}ft - ${bed.soilType.replaceAll("-", " ")}` : placement.locationLabel} />
 
       <View style={styles.environmentPanel}>
-        <Signal icon="sunny-outline" label="sun" value={sunProfile ? `${sunProfile.estimatedDailySunHours}h` : "window"} />
-        <Signal icon="water-outline" label="moisture" value={placement.kind === "indoor" ? "manual" : "check"} />
+        <Signal icon="sunny-outline" label="sun" value={sunProfile ? `${sunProfile.confidence === "low" ? "Est. " : ""}${sunProfile.estimatedDailySunHours}h` : "Not mapped"} />
+        <Signal icon="water-outline" label="moisture" value={placement.kind === "indoor" ? "Check manually" : "Sensor off"} />
         <Signal icon="leaf-outline" label="plants" value={`${plants.length}`} />
       </View>
+      {bed ? (
+        <TouchableOpacity accessibilityRole="button" style={styles.mapSunButton} onPress={() => Alert.alert("Map Sun Exposure", "Guided compass and shade mapping is not active yet. For now, edit this bed later to enter manual sun exposure.")}>
+          <Ionicons name="sunny-outline" size={18} color={colors.leafDeep} />
+          <Text style={styles.mapSunText}>{sunProfile ? "Refine Sun Exposure" : "Map Sun Exposure"}</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {bed ? (
         <View style={styles.bedEditor}>
@@ -176,7 +184,8 @@ export function LocationManagementScreen({
               <TextInput value={depthInches} onChangeText={setDepthInches} keyboardType="numeric" placeholder="Depth in" placeholderTextColor={colors.textMuted} style={styles.input} />
             </View>
           ) : (
-            <TouchableOpacity accessibilityRole="button" activeOpacity={0.92} style={[styles.overheadBed, replantingPlantId && styles.overheadBedActive]} onPress={handleBedPress}>
+            <TouchableOpacity accessibilityRole="button" activeOpacity={0.92} style={[styles.overheadBed, replantingPlantId && styles.overheadBedActive, overcrowded && styles.overheadBedWarning]} onPress={handleBedPress}>
+              {replantingPlantId ? <Text style={styles.dragModeBanner}>Move mode: tap a new spot, then confirm.</Text> : <Text style={styles.dragModeSubtle}>Long-press a plant marker for Harvest, Move, Rename, Details, or Remove.</Text>}
               {plants.slice(0, 9).map((plant, index) => {
                 const species = model.species.find((item) => item.id === plant.speciesId);
                 const knowledge = getPlantKnowledge(species, plant.nickname);
@@ -191,7 +200,7 @@ export function LocationManagementScreen({
                     key={plant.id}
                     accessibilityRole="button"
                     accessibilityLabel={`${plant.nickname}. Long press for actions.`}
-                    style={[styles.spacingCircle, plant.id === replantingPlantId && styles.spacingCircleMoving, { left: point.left, top: point.top, width: spacing * 2.2, height: spacing * 2.2, borderRadius: spacing * 1.1 }]}
+                    style={[styles.spacingCircle, overcrowded && styles.spacingCircleWarning, plant.id === replantingPlantId && styles.spacingCircleMoving, { left: point.left, top: point.top, width: spacing * 2.2, height: spacing * 2.2, borderRadius: spacing * 1.1 }]}
                     onPress={() => onOpenPlant(plant.id)}
                     onLongPress={() => openPlantMenu(plant)}
                     delayLongPress={350}
@@ -200,7 +209,7 @@ export function LocationManagementScreen({
                   </TouchableOpacity>
                 );
               })}
-              {replantingPlantId ? <Text style={styles.replantHint}>Tap a new spot</Text> : null}
+              {replantingPlantId ? <Text style={styles.replantHint}>Spacing circle stays visible while choosing a new spot.</Text> : null}
             </TouchableOpacity>
           )}
         </View>
@@ -214,6 +223,7 @@ export function LocationManagementScreen({
       ) : null}
 
       <PrimaryButton label="Add plant here" onPress={() => onAddPlant(placement)} tone="sun" icon={<Ionicons name="add" size={20} color={colors.leafDeep} />} />
+      {onDiagnose ? <PrimaryButton label="Diagnose Issue" onPress={onDiagnose} tone="quiet" icon={<Ionicons name="camera-outline" size={20} color={colors.leafDeep} />} /> : null}
       {bed ? <PrimaryButton label={isOptimizing ? "Optimizing..." : "AI Optimize Bed"} onPress={optimizeBed} tone="quiet" icon={<Ionicons name="sparkles-outline" size={20} color={colors.leafDeep} />} /> : null}
 
       {optimization ? (
@@ -313,6 +323,9 @@ function getPoint(index: number): { left: DimensionValue; top: DimensionValue } 
 export function getGardenPlacements(model: GardenHomeModel): GardenPlacement[] {
   const homeGarden = model.gardens.find((garden) => garden.id === "garden-home") ?? model.gardens[0];
   const indoorGarden = model.gardens.find((garden) => garden.id === "garden-indoor") ?? model.gardens[0];
+  if (!homeGarden && !indoorGarden) {
+    return [];
+  }
 
   const bedPlacements = model.beds.map((bed) => ({
     id: bed.id,
@@ -338,14 +351,16 @@ export function getGardenPlacements(model: GardenHomeModel): GardenPlacement[] {
 
   return [
     ...bedPlacements,
-    {
-      id: "container-patio",
-      label: "Patio container",
-      gardenId: homeGarden.id,
-      locationLabel: "Patio container",
-      locationType: "container",
-      kind: "container"
-    },
+    ...(homeGarden
+      ? [{
+          id: "container-patio",
+          label: "Patio container",
+          gardenId: homeGarden.id,
+          locationLabel: "Patio container",
+          locationType: "container" as const,
+          kind: "container" as const
+        }]
+      : []),
     ...indoorPlacements
   ];
 }
@@ -380,7 +395,7 @@ function getCompanionSummary(plants: PlantInstance[], species: PlantSpecies[]) {
     .slice(0, 4)
     .join(", ");
 
-  return `${names} are sharing this space. Companion checks are mocked for now; planner warnings will become rule-driven.`;
+  return `${names} are sharing this space. Companion checks currently use local rules and will become richer as planner intelligence grows.`;
 }
 
 const styles = StyleSheet.create({
@@ -408,6 +423,22 @@ const styles = StyleSheet.create({
   },
   signalValue: {
     color: colors.text,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  mapSunButton: {
+    minHeight: 48,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm
+  },
+  mapSunText: {
+    color: colors.leafDeep,
     fontSize: typography.small,
     fontWeight: "900"
   },
@@ -480,6 +511,39 @@ const styles = StyleSheet.create({
     borderColor: colors.sun,
     borderWidth: 4
   },
+  overheadBedWarning: {
+    borderColor: colors.coral
+  },
+  dragModeBanner: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.md,
+    top: spacing.md,
+    zIndex: 2,
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textAlign: "center",
+    backgroundColor: "rgba(244,200,95,0.92)",
+    borderRadius: radii.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm
+  },
+  dragModeSubtle: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.md,
+    top: spacing.md,
+    zIndex: 2,
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: "900",
+    textAlign: "center",
+    backgroundColor: "rgba(36,79,55,0.58)",
+    borderRadius: radii.pill,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm
+  },
   spacingCircle: {
     position: "absolute",
     borderWidth: 2,
@@ -491,6 +555,9 @@ const styles = StyleSheet.create({
   spacingCircleMoving: {
     backgroundColor: "rgba(244,200,95,0.72)",
     borderColor: colors.white
+  },
+  spacingCircleWarning: {
+    borderColor: "rgba(217,109,91,0.96)"
   },
   replantHint: {
     position: "absolute",

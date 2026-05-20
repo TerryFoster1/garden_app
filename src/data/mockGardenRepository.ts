@@ -212,6 +212,42 @@ const articles: KnowledgeArticle[] = [
 ];
 
 export const mockGardenRepository = {
+  getEmptyModel(): GardenHomeModel {
+    return {
+      user: {
+        id: "user-local",
+        name: "",
+        locationLabel: "",
+        latitude: 0,
+        longitude: 0,
+        hardinessZone: ""
+      },
+      gardens: [],
+      zones: [],
+      beds: [],
+      obstructions: [],
+      sunProfiles: [],
+      species: [],
+      plantInstances: [],
+      plantPhotos: [],
+      growthSnapshots: [],
+      tasks: [],
+      weather: {
+        id: "weather-unset",
+        locationLabel: "",
+        capturedAt: new Date().toISOString(),
+        temperatureC: 0,
+        humidityPercent: 0,
+        windKph: 0,
+        rainfallMm24h: 0,
+        uvIndex: 0,
+        frostRisk: "none"
+      },
+      weatherAlerts: [],
+      articles,
+      notificationPreferences: notificationPreferences.map((preference) => ({ ...preference, userId: "user-local" }))
+    };
+  },
   getHomeModel(): GardenHomeModel {
     return {
       user,

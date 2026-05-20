@@ -109,6 +109,6 @@ export function getBedPlanningSummary(bed: GardenBed | undefined, plants: PlantI
     capacity: Math.max(1, Math.floor(areaSquareInches / (18 * 18))),
     used: plants.length,
     warnings,
-    suggestions: suggestions.length ? suggestions : ["This layout looks workable in the mock rules engine."]
+    suggestions: suggestions.length ? suggestions : ["This layout looks workable in the local spacing rules."]
   };
 }

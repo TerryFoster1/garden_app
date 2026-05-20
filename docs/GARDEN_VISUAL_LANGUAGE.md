@@ -51,6 +51,12 @@ This gives the garden memory: transplant day, first flowers, first fruit, pest r
 
 When a plant has no photo, a glyph or illustration is acceptable. Once a photo exists, use the photo first with gentle health/status overlays.
 
+## Plant Detail Visual Hierarchy
+
+Plant Detail uses photo-first hierarchy. The latest PlantInstance photo should dominate the page, with health and stage chips layered over it. Care facts, pests, companions, seed notes, and pruning guidance are secondary and collapsed by default.
+
+Current tasks should feel like light operational rows, not large educational cards. Recent activity should be a small timeline: watered, photo updated, diagnosed, harvested, or added.
+
 ## Overview Restraint
 
 My Garden should use fewer visual systems than Bed Detail. It needs calm bed cards and indoor plant cards. It should not show full planner maps, spacing overlays, companion analytics, or dense environmental widgets.

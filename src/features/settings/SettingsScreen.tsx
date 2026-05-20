@@ -13,7 +13,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   return (
     <View>
       <ScreenHeader onBack={onBack} eyebrow="Profile" title="Settings" subtitle="Profile, location, notification preferences, weather providers, and future AI/provider settings." />
-      {["Location: Kitchener/Waterloo", "Notifications: task and weather categories", "Weather providers: public forecast and personal station", "Privacy: photos, observations, garden map"].map((item) => (
+      {["Location: editable in Profile", "Notifications: task and weather categories", "Weather providers: public forecast and personal station", "Privacy: photos, observations, garden map"].map((item) => (
         <GardenCard key={item}>
           <Text style={styles.cardTitle}>{item}</Text>
         </GardenCard>
@@ -30,4 +30,3 @@ const styles = StyleSheet.create({
     fontWeight: "900"
   }
 });
-

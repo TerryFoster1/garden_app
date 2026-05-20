@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { mockGardenRepository } from "../data/mockGardenRepository";
 import { GardenTabKey, navItems } from "../navigation/navItems";
 import { AddPlantFlowScreen } from "../features/add-plant/AddPlantFlowScreen";
+import { DiagnosisScreen } from "../features/diagnosis/DiagnosisScreen";
 import { GardenSetupFlowScreen } from "../features/garden-setup/GardenSetupFlowScreen";
 import { KnowledgeScreen } from "../features/knowledge/KnowledgeScreen";
 import { LandingScreen } from "../features/landing/LandingScreen";
@@ -20,8 +21,9 @@ import { TodayScreen } from "../features/today/TodayScreen";
 import { WeatherAlertsScreen } from "../features/weather/WeatherAlertsScreen";
 import { AddPlantDraft } from "../features/add-plant/types";
 import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies } from "../domain";
-import { loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
-import { weatherProvider } from "../services/weather/weatherProvider";
+import { clearAllLocalAppData, loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
+import { loadLocalSession, LocalSession } from "../services/localAuth";
+import { geocodeLocation, weatherProvider } from "../services/weather/weatherProvider";
 import { colors, radii, spacing, typography } from "../theme/tokens";
 
 type OverlayScreen =
@@ -35,6 +37,7 @@ type OverlayScreen =
   | "settings"
   | "calendar"
   | "weatherAlerts"
+  | "diagnosis"
   | null;
 
 export function GardenApp() {
@@ -46,10 +49,12 @@ export function GardenApp() {
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
   const [selectedReferencePlant, setSelectedReferencePlant] = useState<PlantInstance | null>(null);
   const [selectedPlacement, setSelectedPlacement] = useState<GardenPlacement | null>(null);
+  const [diagnosisPlantId, setDiagnosisPlantId] = useState<string | null>(null);
   const [initialAddPlacement, setInitialAddPlacement] = useState<GardenPlacement | null>(null);
   const [addPlantBackSignal, setAddPlantBackSignal] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [model, setModel] = useState<GardenHomeModel>(() => mockGardenRepository.getHomeModel());
+  const [localSession, setLocalSession] = useState<LocalSession | null>(null);
+  const [model, setModel] = useState<GardenHomeModel>(() => mockGardenRepository.getEmptyModel());
 
   const selectedPlant =
     selectedReferencePlant ??
@@ -61,8 +66,12 @@ export function GardenApp() {
   useEffect(() => {
     let isMounted = true;
 
-    loadPersistedGardenModel()
-      .then((savedModel) => {
+    Promise.all([loadPersistedGardenModel(), loadLocalSession()])
+      .then(([savedModel, savedSession]) => {
+        if (isMounted && savedSession) {
+          setLocalSession(savedSession);
+          setOverlay(savedModel ? null : "onboarding");
+        }
         if (isMounted && savedModel) {
           setModel(sanitizeLegacyProfile(savedModel));
         }
@@ -94,6 +103,10 @@ export function GardenApp() {
     }
 
     let isMounted = true;
+
+    if (!model.user.locationLabel.trim() || (model.user.latitude === 0 && model.user.longitude === 0)) {
+      return;
+    }
 
     Promise.all([
       weatherProvider.getCurrent(model.user.latitude, model.user.longitude),
@@ -145,7 +158,13 @@ export function GardenApp() {
   }
 
   function handleOpenScan() {
-    setOverlay("scan");
+    setDiagnosisPlantId(null);
+    setOverlay("diagnosis");
+  }
+
+  function handleOpenDiagnosis(plantId?: string) {
+    setDiagnosisPlantId(plantId ?? null);
+    setOverlay("diagnosis");
   }
 
   function handleBack() {
@@ -225,7 +244,54 @@ export function GardenApp() {
     }));
   }
 
+  async function resolveLocation(locationLabel: string) {
+    const geocoded = await geocodeLocation(locationLabel);
+    return geocoded ?? null;
+  }
+
+  function buildNotificationPreferences(userId: string, enabled: boolean): NotificationPreference[] {
+    return [
+      { id: "pref-morning", userId, taskType: "watering", enabled, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+      { id: "pref-watering", userId, taskType: "watering", enabled, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+      { id: "pref-weather", userId, taskType: "frost-protection", enabled, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+      { id: "pref-photo", userId, taskType: "pest-check", enabled, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+      { id: "pref-harvest", userId, taskType: "harvest", enabled, quietHoursStart: "21:00", quietHoursEnd: "07:00" }
+    ];
+  }
+
+  function handleAuthenticated(session: LocalSession, isNewAccount: boolean) {
+    setLocalSession(session);
+    setModel((current) => ({
+      ...current,
+      user: {
+        ...current.user,
+        id: session.accountId,
+        name: session.displayName
+      }
+    }));
+    setOverlay(isNewAccount ? "onboarding" : null);
+  }
+
   function handleUpdateProfile(updates: { name: string; locationLabel: string; notificationPreferences: NotificationPreference[] }) {
+    void resolveLocation(updates.locationLabel).then((location) => {
+      if (!location) {
+        return;
+      }
+      setModel((current) => ({
+        ...current,
+        user: {
+          ...current.user,
+          locationLabel: location.label,
+          latitude: location.latitude,
+          longitude: location.longitude
+        },
+        weather: {
+          ...current.weather,
+          locationLabel: location.label
+        }
+      }));
+    });
+
     setModel((current) => ({
       ...current,
       user: {
@@ -239,6 +305,129 @@ export function GardenApp() {
       },
       notificationPreferences: updates.notificationPreferences
     }));
+  }
+
+  function handleOnboardingProfile(profile: { name: string; locationLabel: string; latitude: number; longitude: number; notificationsEnabled: boolean }) {
+    const userId = localSession?.accountId || model.user.id || "user-local";
+    setModel((current) => ({
+      ...current,
+      user: {
+        ...current.user,
+        id: userId,
+        name: profile.name || localSession?.displayName || "",
+        locationLabel: profile.locationLabel,
+        latitude: profile.latitude,
+        longitude: profile.longitude
+      },
+      weather: {
+        ...current.weather,
+        locationLabel: profile.locationLabel
+      },
+      notificationPreferences: buildNotificationPreferences(userId, profile.notificationsEnabled)
+    }));
+  }
+
+  function handleLoadDemoGarden() {
+    const demo = mockGardenRepository.getHomeModel();
+    setModel({
+      ...demo,
+      user: {
+        ...demo.user,
+        id: localSession?.accountId || demo.user.id,
+        name: localSession?.displayName || demo.user.name
+      }
+    });
+    setSelectedPhotoUri(null);
+    setSelectedPlacement(null);
+    setSelectedReferencePlant(null);
+    setSelectedPlantId(null);
+    setActiveTab("home");
+    setOverlay(null);
+  }
+
+  function handleResetLocalAppData() {
+    void clearAllLocalAppData().finally(() => {
+      setLocalSession(null);
+      setModel(mockGardenRepository.getEmptyModel());
+      setSelectedPhotoUri(null);
+      setLastAddedPlantId(null);
+      setSelectedPlantId(null);
+      setSelectedReferencePlant(null);
+      setSelectedPlacement(null);
+      setInitialAddPlacement(null);
+      setActiveTab("home");
+      setOverlay("landing");
+    });
+  }
+
+  function handleCreateFirstBed(input: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number; locationType?: PlantInstance["locationType"]; kind: "outdoor" | "container" | "indoor"; sunExposure?: string }) {
+    const now = Date.now();
+    const userId = model.user.id || "user-local";
+    const outdoorGardenId = "garden-home";
+    const zoneId = `zone-${now}`;
+    const bedId = `bed-${now}`;
+
+    setModel((current) => {
+      const hasOutdoorGarden = current.gardens.some((garden) => garden.id === outdoorGardenId);
+      return {
+        ...current,
+        gardens: hasOutdoorGarden
+          ? current.gardens
+          : [
+              ...current.gardens,
+              {
+                id: outdoorGardenId,
+                userId,
+                name: "Home Garden",
+                kind: "outdoor",
+                locationLabel: current.user.locationLabel || "Outdoor garden",
+                notes: "Created locally during first setup."
+              }
+            ],
+        zones: [
+          ...current.zones,
+          {
+            id: zoneId,
+            gardenId: outdoorGardenId,
+            name: "Outdoor growing space",
+            sunExposure: input.sunExposure && input.sunExposure !== "not-mapped" ? input.sunExposure as "full-sun" | "part-sun" | "part-shade" | "shade" : "part-sun",
+            microclimateNotes: input.sunExposure && input.sunExposure !== "not-mapped" ? "Manual sun exposure entered during setup." : "Sun exposure not mapped yet."
+          }
+        ],
+        beds: [
+          ...current.beds,
+          {
+            id: bedId,
+            gardenId: outdoorGardenId,
+            zoneId,
+            name: input.name,
+            shape: "rectangle",
+            lengthFeet: input.lengthFeet,
+            widthFeet: input.widthFeet,
+            depthInches: input.depthInches,
+            soilType: "unknown",
+            locationType: input.locationType ?? (input.kind === "container" ? "container" : "raised-bed"),
+            orientationDegreesFromNorth: 0
+          }
+        ],
+        sunProfiles: input.sunExposure && input.sunExposure !== "not-mapped"
+          ? [
+              ...current.sunProfiles,
+              {
+                id: `sun-${bedId}`,
+                bedId,
+                morning: input.sunExposure as "full-sun" | "part-sun" | "part-shade" | "shade",
+                midday: input.sunExposure as "full-sun" | "part-sun" | "part-shade" | "shade",
+                afternoon: input.sunExposure as "full-sun" | "part-sun" | "part-shade" | "shade",
+                estimatedDailySunHours: input.sunExposure === "full-sun" ? 8 : input.sunExposure === "part-sun" ? 5 : input.sunExposure === "part-shade" ? 3 : 1,
+                confidence: "low"
+              }
+            ]
+          : current.sunProfiles
+      };
+    });
+    setOverlay(null);
+    setActiveTab("garden");
   }
 
   function handlePlantAdded(draft: AddPlantDraft) {
@@ -457,6 +646,31 @@ export function GardenApp() {
     }));
   }
 
+  function handleSaveDiagnosis(input: { plantId?: string; photoUri: string; note: string; symptoms: string[] }) {
+    if (input.plantId) {
+      handleAddPlantPhoto(input.plantId, input.photoUri, "diagnose", input.note);
+    }
+
+    if (input.plantId) {
+      setModel((current) => ({
+        ...current,
+        tasks: [
+          {
+            id: `task-diagnosis-follow-up-${Date.now()}`,
+            plantInstanceId: input.plantId,
+            type: "pest-check",
+            title: "Follow up on diagnosis",
+            dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            priority: "normal",
+            status: "needs-confirmation",
+            reason: input.symptoms.length ? `Diagnosis symptoms: ${input.symptoms.join(", ")}. Confirm before treatment.` : "Diagnosis photo saved. Confirm next action before treatment."
+          },
+          ...current.tasks
+        ]
+      }));
+    }
+  }
+
   function handleUpdateBed(bedId: string, updates: { name: string; lengthFeet: number; widthFeet: number; depthInches?: number }) {
     setModel((current) => ({
       ...current,
@@ -513,11 +727,20 @@ export function GardenApp() {
 
   function renderMainScreen() {
     if (overlay === "landing") {
-      return <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />;
+      return <LandingScreen onAuthenticated={handleAuthenticated} onLearnMore={() => setOverlay("landing")} />;
     }
 
     if (overlay === "onboarding") {
-      return <OnboardingScreen onComplete={() => setOverlay(null)} onStartGarden={() => setOverlay("gardenSetup")} />;
+      return (
+        <OnboardingScreen
+          initialDisplayName={localSession?.displayName ?? model.user.name}
+          onResolveLocation={resolveLocation}
+          onComplete={handleOnboardingProfile}
+          onStartGarden={() => setOverlay("gardenSetup")}
+          onAddPlant={() => handleOpenAddPlant(null)}
+          onLoadDemoGarden={handleLoadDemoGarden}
+        />
+      );
     }
 
     if (overlay === "scan") {
@@ -532,7 +755,7 @@ export function GardenApp() {
           onBack={handleBack}
           onMovePlant={openSelectedPlantLocation}
           onRemovePlant={() => confirmRemovePlant(selectedPlant)}
-          onScanPlant={handleOpenScan}
+          onScanPlant={() => handleOpenDiagnosis(selectedPlant?.id)}
           onRenamePlant={handleRenamePlant}
           onMarkWatered={handleMarkWatered}
           onHarvestPlant={handleHarvestPlant}
@@ -542,7 +765,7 @@ export function GardenApp() {
     }
 
     if (overlay === "addPlant") {
-      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} initialPlacement={initialAddPlacement} backSignal={addPlantBackSignal} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={handleBack} onExit={handleExitAddPlant} />;
+      return <AddPlantFlowScreen model={model} selectedPhotoUri={selectedPhotoUri} initialPlacement={initialAddPlacement} backSignal={addPlantBackSignal} onPhotoSelected={handlePhotoSelected} onPlantAdded={handlePlantAdded} onBack={handleBack} onExit={handleExitAddPlant} onCreateGarden={() => setOverlay("gardenSetup")} />;
     }
 
     if (overlay === "manageLocation" && selectedPlacement) {
@@ -557,12 +780,17 @@ export function GardenApp() {
           onRemovePlant={handleRemovePlant}
           onRepositionPlant={handleRepositionPlant}
           onUpdateBed={handleUpdateBed}
+          onDiagnose={() => handleOpenDiagnosis()}
         />
       );
     }
 
+    if (overlay === "diagnosis") {
+      return <DiagnosisScreen model={model} initialPlantId={diagnosisPlantId} onBack={handleBack} onSaveDiagnosis={handleSaveDiagnosis} />;
+    }
+
     if (overlay === "gardenSetup") {
-      return <GardenSetupFlowScreen onBack={() => setOverlay(null)} />;
+      return <GardenSetupFlowScreen onBack={() => setOverlay(null)} onCreateBed={handleCreateFirstBed} />;
     }
 
     if (overlay === "settings") {
@@ -584,6 +812,8 @@ export function GardenApp() {
           onOpenWeatherAlerts={() => setOverlay("weatherAlerts")}
           onOpenPlant={handleOpenPlant}
           onAddPlant={() => handleOpenAddPlant(null)}
+          onCreateGarden={() => setOverlay("gardenSetup")}
+          onLoadDemoGarden={handleLoadDemoGarden}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
         />
@@ -602,15 +832,15 @@ export function GardenApp() {
     }
 
     if (activeTab === "library") {
-      return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} onDiagnoseByPhoto={handleOpenScan} />;
+      return <KnowledgeScreen species={model.species} onOpenPlant={handleOpenSpecies} onDiagnoseByPhoto={() => handleOpenDiagnosis()} />;
     }
 
-    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} onUpdateProfile={handleUpdateProfile} />;
+    return <ProfileScreen model={model} onOpenSettings={() => setOverlay("settings")} onUpdateProfile={handleUpdateProfile} onResetLocalData={handleResetLocalAppData} />;
   }
 
   const appContent =
     overlay === "landing" ? (
-      <LandingScreen onEnter={() => setOverlay(null)} onLearnMore={() => setOverlay("onboarding")} />
+      <LandingScreen onAuthenticated={handleAuthenticated} onLearnMore={() => setOverlay("landing")} />
     ) : (
     <View style={styles.app}>
       <ScrollView contentContainerStyle={styles.screen}>{renderMainScreen()}</ScrollView>
@@ -747,7 +977,7 @@ function createInitialCareTasks(plant: PlantInstance, species: PlantSpecies | un
         dueAt: germinationCheck.toISOString(),
         priority: "normal",
         status: "scheduled",
-        reason: "Seed-start placeholder. Future seed workflow will use crop-specific germination windows, tray location, warmth, and moisture."
+        reason: "Seed-start tracking begins here. Future seed workflow will use crop-specific germination windows, tray location, warmth, and moisture."
       },
       {
         id: `task-${plant.id}-transplant-window`,
@@ -758,7 +988,7 @@ function createInitialCareTasks(plant: PlantInstance, species: PlantSpecies | un
         dueAt: transplantCheck.toISOString(),
         priority: "normal",
         status: "needs-confirmation",
-        reason: "Seed-start placeholder. Future rules will combine seed date, crop type, frost risk, hardening off, and local weather."
+        reason: "Seed-start tracking begins here. Future rules will combine seed date, crop type, frost risk, hardening off, and local weather."
       }
     );
   }

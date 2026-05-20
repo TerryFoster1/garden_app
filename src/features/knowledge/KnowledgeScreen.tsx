@@ -55,7 +55,7 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
       setAnswer({
         provider: "local",
         confidence: "low",
-        answer: "Pattypan could not reach the AI provider. Try again later, or use photo diagnosis/search for a local fallback.",
+        answer: "Pattypan could not reach the AI provider. Try again later, or use photo diagnosis/search for local guidance.",
         actions: ["Check the plant closely.", "Search the Library by symptom.", "Take a photo if the issue is visible."]
       });
     } finally {
@@ -223,7 +223,7 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
 function AnswerCard({ answer }: { answer: AiAssistantResponse }) {
   return (
     <View style={styles.answerCard}>
-      <Text style={styles.matchLabel}>{answer.provider === "openai" ? "Pattypan AI" : "Local fallback"} - {answer.confidence} confidence</Text>
+      <Text style={styles.matchLabel}>{answer.provider === "openai" ? "Pattypan AI" : "Local guidance"} - {answer.confidence} confidence</Text>
       <Text style={styles.answerText}>{answer.answer}</Text>
       {answer.actions.slice(0, 4).map((action) => (
         <Text key={action} style={styles.actionBullet}>- {action}</Text>

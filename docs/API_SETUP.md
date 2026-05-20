@@ -18,6 +18,8 @@ PlantNet is used for captured/uploaded photo identification. Pattypan sends the 
 
 OpenWeather powers the Home weather snapshot and garden alerts. Pattypan converts current conditions and short-range forecast signals into gardening actions such as frost cover, skip watering after rain, heat stress, wind support, and humidity/mildew checks.
 
+Location entry uses OpenWeather geocoding when configured. If no location is saved, Home asks for setup instead of pretending Kitchener/Waterloo weather is real.
+
 ## OpenAI
 
 - `EXPO_PUBLIC_AI_PROVIDER=openai`

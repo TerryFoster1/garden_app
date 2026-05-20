@@ -23,6 +23,7 @@ type AddPlantFlowScreenProps = {
   onPlantAdded: (draft: AddPlantDraft) => void;
   onBack: () => void;
   onExit?: () => void;
+  onCreateGarden?: () => void;
 };
 
 const stages: Array<{ value: PlantStage; label: string; helper: string }> = [
@@ -32,7 +33,7 @@ const stages: Array<{ value: PlantStage; label: string; helper: string }> = [
   { value: "mature", label: "Mature plant", helper: "Care, harvest, pruning, or diagnosis" }
 ];
 
-export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, backSignal = 0, onPhotoSelected, onPlantAdded, onBack, onExit }: AddPlantFlowScreenProps) {
+export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, backSignal = 0, onPhotoSelected, onPlantAdded, onBack, onExit, onCreateGarden }: AddPlantFlowScreenProps) {
   const [step, setStep] = useState<"photo" | "confirm" | "place">("photo");
   const [identification, setIdentification] = useState<MockPlantIdentificationResult | undefined>();
   const [selectedIdentificationMatch, setSelectedIdentificationMatch] = useState<PlantIdentificationMatch | undefined>();
@@ -212,7 +213,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
       ) : (
         <GardenCard tone="warm">
           <Text style={styles.cardTitle}>Start with a photo or add manually</Text>
-          <Text style={styles.cardText}>Take a plant photo or choose one from your library. PlantNet is used when configured, with local fallback if the API is unavailable.</Text>
+          <Text style={styles.cardText}>Take a plant photo or choose one from your library. Pattypan will show possible matches and ask you to confirm before adding.</Text>
         </GardenCard>
       )}
 
@@ -301,6 +302,13 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
       {step === "place" ? (
         <View>
           <Text style={styles.sectionTitle}>Indoor or outdoor location</Text>
+          {placements.length === 0 ? (
+            <GardenCard tone="warm">
+              <Text style={styles.cardTitle}>Create a growing space first</Text>
+              <Text style={styles.cardText}>Pattypan needs a bed, container, or indoor zone so this plant has a real location.</Text>
+              {onCreateGarden ? <PrimaryButton label="Create Garden" onPress={onCreateGarden} tone="sun" icon={<Ionicons name="grid-outline" size={20} color={colors.leafDeep} />} /> : null}
+            </GardenCard>
+          ) : null}
           {placements.map((placement) => (
             <TouchableOpacity key={placement.id} accessibilityRole="button" onPress={() => setPlacementId(placement.id)}>
               <GardenCard tone={placement.id === placementId ? "warm" : "surface"}>
@@ -324,7 +332,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
             <GardenCard tone="sky">
               <Text style={styles.matchLabel}>Grow from seed</Text>
               <Text style={styles.cardTitle}>Seed-start tracking scaffold</Text>
-              <Text style={styles.cardText}>Pattypan will create a germination check and a transplant timing placeholder. Future versions will add seed trays, indoor light, hardening off, and sowing calendars.</Text>
+              <Text style={styles.cardText}>Pattypan will create a germination check and a transplant timing reminder. Future versions will add seed trays, indoor light, hardening off, and sowing calendars.</Text>
             </GardenCard>
           ) : null}
 

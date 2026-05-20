@@ -28,6 +28,7 @@ This mirrors the sibling app convention of keeping `domain`, `data`, `services`,
 - Plant identification provider: PlantNet-first plant ID, health diagnosis, and pest/weed identification boundary. The adapter reads `EXPO_PUBLIC_PLANT_ID_PROVIDER=plantnet` and `EXPO_PUBLIC_PLANT_ID_API_KEY` at runtime, sends captured or uploaded photos as multipart form data, returns multiple possible matches with confidence, and never auto-confirms a result.
 - Plant search service: local autocomplete over common names, alternate names, scientific names, and categories. This keeps Add Plant fast now and replaceable by a real plant database/API later.
 - AI recommendation provider: OpenAI-first Library answers, diagnosis explanations, and bed optimization with local rule fallback.
+- Local auth service: prototype email/password account and session storage on-device. It stores a salted non-cryptographic hash rather than plaintext, but production must replace this with server-side auth.
 - Care rules engine: deterministic validation before tasks are scheduled.
 - Notification service: future Expo push notifications and local reminders.
 - SunWeatherEngine: sun path, orientation, obstructions, microclimate estimation, and placement warnings.
@@ -51,7 +52,7 @@ Stripe is the likely future subscription provider, but no payment flow, checkout
 
 ## Auth Readiness
 
-Auth is not implemented yet. Future auth should support:
+Prototype local auth now exists so testing no longer bypasses Sign up / Sign in. Future production auth should support:
 
 - Email/password login.
 - Google login.
@@ -60,7 +61,7 @@ Auth is not implemented yet. Future auth should support:
 - Saved user garden data tied to a stable user id.
 - Server-side protection for paid provider calls and sensitive secrets.
 
-Until that exists, the app remains local-first and should not store private server secrets in client code. Expo public environment variables are acceptable only for providers intended for client-side use during the prototype. `.env.local` is ignored by git and must not be committed.
+Until production auth exists, the app remains local-first and should not store private server secrets in client code. Expo public environment variables are acceptable only for providers intended for client-side use during the prototype. `.env.local` is ignored by git and must not be committed.
 
 ## PlantNet Provider Boundary
 
@@ -132,7 +133,7 @@ The app is organized around operating workflows, not generic screens:
 
 ## Current Local Persistence
 
-The prototype persists the `GardenHomeModel` with AsyncStorage. This is deliberately replaceable. A future repository layer should migrate this to versioned local storage plus backend sync without changing feature-screen intent.
+The prototype persists local auth/session and the `GardenHomeModel` with AsyncStorage. Normal startup uses an empty first-use model until a user creates a local account and chooses Add Plant, Create Garden, or Load Demo Garden. Profile includes a reset action that clears local auth, session, profile, gardens, plants, tasks, photos, diagnosis records, and cached demo data. This is deliberately replaceable. A future repository layer should migrate this to versioned local storage plus backend sync without changing feature-screen intent.
 
 Plant photos currently persist as URI records inside the same local model. Future production architecture should separate binary photo storage from metadata, queue uploads offline, and sync photo history, diagnosis photos, and growth snapshots to the user's account.
 

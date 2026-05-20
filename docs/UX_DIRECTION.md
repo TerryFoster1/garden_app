@@ -87,3 +87,17 @@ Bottom nav is Home, My Garden, Library, Profile. Scan and Planner are not primar
 ## Display Name Rule
 
 Users can rename a PlantInstance without changing PlantSpecies. "Tomato Holland" can still be a Cherry Tomato under the hood.
+
+## Plant Detail Direction
+
+Plant Detail is a living status page, not a plant encyclopedia. Its first job is to answer: how is this specific plant doing right now?
+
+The hierarchy is:
+
+1. Latest plant photo, display name, species, stage, health state, and harvest countdown when relevant.
+2. Immediate actions: Watered, Diagnose, Update Photo, Harvest, Move, Rename, and Remove.
+3. Current actionable tasks with short reasons behind a Why interaction.
+4. Photo growth timeline and tiny recent activity events.
+5. Collapsed knowledge sections for care, companions, pest/disease watch, propagation, seed/transplant, pruning/harvest, and full guide links.
+
+Deep education should move outward to Library. Plant Detail can link to it, but it should not permanently expose every care fact, companion note, pest, propagation note, and activity record at once.

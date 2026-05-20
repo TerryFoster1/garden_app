@@ -15,6 +15,7 @@ Pattypan's AI layer is an assistant, not an authority.
 - Topic screens: Pests & Bugs, Diseases, Plant Care, Propagation, and Growing From Seed can ask targeted questions.
 - Bed Detail: AI Optimize Bed can review bed dimensions, current plants, sun, spacing, and companion context.
 - Diagnosis boundary: PlantNet can identify the plant, then OpenAI can explain possible issues and safe next checks.
+- Diagnosis flow: photo, optional PlantInstance link, symptoms, PlantNet diagnosis/ID, OpenAI explanation, and saved follow-up task.
 
 ## Fallback Behavior
 

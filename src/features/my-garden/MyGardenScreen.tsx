@@ -55,6 +55,13 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
           {outdoorBeds.map((bed, index) => (
             <BedOverviewCard key={bed.id} bed={bed} plants={plantsByBed[bed.id] ?? []} species={model.species} index={index} onPress={() => onOpenGardenSetup(toPlacement(bed))} />
           ))}
+          {outdoorBeds.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="grid-outline" size={28} color={colors.leafDeep} />
+              <Text style={styles.emptyTitle}>No outdoor beds yet</Text>
+              <Text style={styles.emptyText}>Create a bed or container to start mapping your real garden.</Text>
+            </View>
+          ) : null}
         </View>
       ) : (
         <View style={styles.list}>

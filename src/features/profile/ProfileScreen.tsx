@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { GardenHomeModel, NotificationPreference } from "../../domain";
@@ -9,23 +9,26 @@ type ProfileScreenProps = {
   model: GardenHomeModel;
   onOpenSettings: () => void;
   onUpdateProfile: (updates: { name: string; locationLabel: string; notificationPreferences: NotificationPreference[] }) => void;
+  onResetLocalData: () => void;
 };
 
 const defaultPreferences: NotificationPreference[] = [
-  { id: "pref-morning", userId: "user-kitchener", taskType: "watering", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
-  { id: "pref-feeding", userId: "user-kitchener", taskType: "feeding", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
-  { id: "pref-weather", userId: "user-kitchener", taskType: "frost-protection", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
-  { id: "pref-photo", userId: "user-kitchener", taskType: "pest-check", enabled: false, quietHoursStart: "21:00", quietHoursEnd: "07:00" }
+  { id: "pref-morning", userId: "user-local", taskType: "watering", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-watering", userId: "user-local", taskType: "watering", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-weather", userId: "user-local", taskType: "frost-protection", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-photo", userId: "user-local", taskType: "pest-check", enabled: false, quietHoursStart: "21:00", quietHoursEnd: "07:00" },
+  { id: "pref-harvest", userId: "user-local", taskType: "harvest", enabled: true, quietHoursStart: "21:00", quietHoursEnd: "07:00" }
 ];
 
 const preferenceLabels: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; helper: string }> = {
   "pref-morning": { icon: "sunny-outline", label: "Morning garden brief", helper: "Daily weather and urgent tasks" },
-  "pref-feeding": { icon: "nutrition-outline", label: "Watering and feeding", helper: "Care nudges from local rules" },
+  "pref-watering": { icon: "water-outline", label: "Watering reminders", helper: "Care nudges from local rules" },
   "pref-weather": { icon: "warning-outline", label: "Weather protection", helper: "Frost, wind, heat, and rain watches" },
-  "pref-photo": { icon: "camera-outline", label: "Weekly photo update", helper: "Growth photos and future diagnosis" }
+  "pref-photo": { icon: "camera-outline", label: "Weekly photo update", helper: "Growth photos and future diagnosis" },
+  "pref-harvest": { icon: "basket-outline", label: "Harvest reminders", helper: "Harvest windows and crop checks" }
 };
 
-export function ProfileScreen({ model, onOpenSettings, onUpdateProfile }: ProfileScreenProps) {
+export function ProfileScreen({ model, onOpenSettings, onUpdateProfile, onResetLocalData }: ProfileScreenProps) {
   const initialPreferences = useMemo(() => mergePreferences(model.notificationPreferences, model.user.id), [model.notificationPreferences, model.user.id]);
   const [displayName, setDisplayName] = useState(model.user.name);
   const [locationLabel, setLocationLabel] = useState(model.user.locationLabel);
@@ -82,7 +85,7 @@ export function ProfileScreen({ model, onOpenSettings, onUpdateProfile }: Profil
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Notifications</Text>
         {preferences.map((preference) => {
-          const row = preferenceLabels[preference.id] ?? { icon: "notifications-outline" as const, label: preference.taskType, helper: "Mock notification rule" };
+          const row = preferenceLabels[preference.id] ?? { icon: "notifications-outline" as const, label: preference.taskType, helper: "Local notification rule" };
           return (
             <TouchableOpacity key={preference.id} accessibilityRole="switch" accessibilityState={{ checked: preference.enabled }} style={styles.infoRow} onPress={() => togglePreference(preference.id)}>
               <Ionicons name={row.icon} size={22} color={colors.leafDeep} />
@@ -101,11 +104,28 @@ export function ProfileScreen({ model, onOpenSettings, onUpdateProfile }: Profil
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Provider Status</Text>
         <View style={styles.statusGrid}>
-          <Status label="Weather provider" value="mock" />
-          <Status label="Plant ID provider" value="mock" />
+          <Status label="Weather provider" value={process.env.EXPO_PUBLIC_WEATHER_PROVIDER || "not set"} />
+          <Status label="Plant ID provider" value={process.env.EXPO_PUBLIC_PLANT_ID_PROVIDER || "not set"} />
+          <Status label="AI provider" value={process.env.EXPO_PUBLIC_AI_PROVIDER || "not set"} />
           <Status label="Notifications" value="local" />
           <Status label="Paywall" value="off" />
         </View>
+      </View>
+
+      <View style={styles.dangerSection}>
+        <Text style={styles.sectionTitle}>Local Data</Text>
+        <Text style={styles.infoText}>Reset clears the local account, session, profile, gardens, plants, tasks, photos, diagnosis records, and cached demo data on this device.</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          style={styles.resetButton}
+          onPress={() => Alert.alert("Reset local app data?", "This cannot be undone on this device.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Reset", style: "destructive", onPress: onResetLocalData }
+          ])}
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.coral} />
+          <Text style={styles.resetText}>Reset local app data</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -319,5 +339,27 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: typography.caption,
     fontWeight: "800"
+  },
+  dangerSection: {
+    borderRadius: 28,
+    backgroundColor: "#fff0e9",
+    borderWidth: 1,
+    borderColor: "#efc3b6",
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  resetButton: {
+    minHeight: 50,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs
+  },
+  resetText: {
+    color: colors.coral,
+    fontSize: typography.small,
+    fontWeight: "900"
   }
 });

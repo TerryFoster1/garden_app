@@ -1,48 +1,123 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { GardenCard } from "../../components/GardenCard";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
-import { colors, spacing, typography } from "../../theme/tokens";
+import { GeocodedLocation } from "../../services/weather/weatherProvider";
+import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type OnboardingScreenProps = {
-  onComplete: () => void;
+  initialDisplayName?: string;
+  onResolveLocation: (label: string) => Promise<GeocodedLocation | null>;
+  onComplete: (profile: { name: string; locationLabel: string; latitude: number; longitude: number; notificationsEnabled: boolean }) => void;
   onStartGarden: () => void;
+  onAddPlant: () => void;
+  onLoadDemoGarden: () => void;
 };
 
-const steps = [
-  "Location for weather, frost, climate, and sun path",
-  "First garden type: indoor, outdoor, raised bed, containers, balcony, greenhouse",
-  "Dimensions, shape, soil, and bed/container type",
-  "Compass orientation or manual north marker",
-  "Shade sources: fence, house, tree, shed, garage, other",
-  "First plant by scan, search, seed, or transplant",
-  "Generate the first care schedule and Today dashboard"
-];
+export function OnboardingScreen({ initialDisplayName = "", onResolveLocation, onComplete, onStartGarden, onAddPlant, onLoadDemoGarden }: OnboardingScreenProps) {
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [region, setRegion] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("Canada");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [error, setError] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
 
-export function OnboardingScreen({ onComplete, onStartGarden }: OnboardingScreenProps) {
+  async function saveProfileAndContinue(next: "addPlant" | "garden" | "demo") {
+    setError("");
+    const label = [street.trim(), city.trim(), region.trim(), postalCode.trim(), country.trim()].filter(Boolean).join(", ");
+    if (!city.trim() || !region.trim() || !country.trim()) {
+      setError("Enter at least a city, province/state, and country for weather alerts.");
+      return;
+    }
+
+    setIsChecking(true);
+    try {
+      const location = await onResolveLocation(label);
+      if (!location) {
+        setError("We couldn't find that location. Please enter a full address or city/postal code.");
+        return;
+      }
+
+      onComplete({
+        name: displayName.trim(),
+        locationLabel: location.label,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        notificationsEnabled
+      });
+
+      if (next === "addPlant") {
+        onAddPlant();
+        return;
+      }
+      if (next === "garden") {
+        onStartGarden();
+        return;
+      }
+      onLoadDemoGarden();
+    } finally {
+      setIsChecking(false);
+    }
+  }
+
   return (
     <View>
-      <ScreenHeader eyebrow="Welcome" title="Your garden, mapped and managed." subtitle="A calm operating system for daily care, weather decisions, photos, and plant knowledge." />
+      <ScreenHeader eyebrow="First setup" title="Make Pattypan yours." subtitle="Account created locally. Now add the location Pattypan should use for weather and garden alerts." />
 
       <GardenCard tone="warm">
         <Ionicons name="location-outline" size={28} color={colors.leafDeep} />
-        <Text style={styles.cardTitle}>Personalized to your place</Text>
-        <Text style={styles.cardText}>The app will request location, camera, notifications, and compass permissions when the real device integrations are connected.</Text>
+        <Text style={styles.cardTitle}>Weather starts with a real location</Text>
+        <Text style={styles.cardText}>Pattypan will geocode this before saving. If it cannot be found, the app will ask for a more complete address.</Text>
       </GardenCard>
 
-      {steps.map((step, index) => (
-        <GardenCard key={step}>
-          <Text style={styles.stepNumber}>Step {index + 1}</Text>
-          <Text style={styles.cardTitle}>{step}</Text>
-        </GardenCard>
-      ))}
+      <View style={styles.form}>
+        <Field label="Display name" value={displayName} onChangeText={setDisplayName} placeholder="Your name" />
+        <Field label="Street address" value={street} onChangeText={setStreet} placeholder="Optional" />
+        <Field label="City" value={city} onChangeText={setCity} placeholder="Kitchener" />
+        <Field label="Province / State" value={region} onChangeText={setRegion} placeholder="Ontario" />
+        <Field label="Postal / ZIP code" value={postalCode} onChangeText={setPostalCode} placeholder="Optional but helpful" />
+        <Field label="Country" value={country} onChangeText={setCountry} placeholder="Canada" />
+      </View>
+
+      <TouchableOpacity accessibilityRole="switch" accessibilityState={{ checked: notificationsEnabled }} style={styles.notificationCard} onPress={() => setNotificationsEnabled((current) => !current)}>
+        <Ionicons name="notifications-outline" size={24} color={colors.leafDeep} />
+        <View style={styles.notificationCopy}>
+          <Text style={styles.cardTitle}>Allow reminders and garden warnings</Text>
+          <Text style={styles.cardText}>Daily brief, watering, frost/heat/wind, harvest, and weekly photo update categories are scaffolded locally.</Text>
+        </View>
+        <View style={[styles.toggle, notificationsEnabled && styles.toggleEnabled]}>
+          <View style={[styles.toggleKnob, notificationsEnabled && styles.toggleKnobEnabled]} />
+        </View>
+      </TouchableOpacity>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <GardenCard>
+        <Text style={styles.stepNumber}>First move</Text>
+        <Text style={styles.cardTitle}>Choose how to begin</Text>
+        <Text style={styles.cardText}>Add a real plant, create a bed/container, or load marked demo data only when you want sample content.</Text>
+      </GardenCard>
 
       <View style={styles.actions}>
-        <PrimaryButton label="Setup first garden" onPress={onStartGarden} />
-        <PrimaryButton label="Use mock garden" onPress={onComplete} tone="quiet" />
+        <PrimaryButton label={isChecking ? "Checking location..." : "Add Plant"} onPress={() => saveProfileAndContinue("addPlant")} icon={<Ionicons name="leaf-outline" size={20} color={colors.white} />} />
+        <PrimaryButton label="Create Garden" onPress={() => saveProfileAndContinue("garden")} tone="sun" icon={<Ionicons name="grid-outline" size={20} color={colors.leafDeep} />} />
+        <PrimaryButton label="Load Demo Garden" onPress={() => saveProfileAndContinue("demo")} tone="quiet" icon={<Ionicons name="flask-outline" size={20} color={colors.leafDeep} />} />
       </View>
+    </View>
+  );
+}
+
+function Field({ label, value, onChangeText, placeholder }: { label: string; value: string; onChangeText: (value: string) => void; placeholder: string }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.textMuted} style={styles.input} />
     </View>
   );
 }
@@ -66,6 +141,70 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.sm
+  },
+  form: {
+    gap: spacing.sm,
+    marginBottom: spacing.md
+  },
+  field: {
+    gap: spacing.xs
+  },
+  fieldLabel: {
+    color: colors.leaf,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  input: {
+    minHeight: 56,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: "800"
+  },
+  notificationCard: {
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  notificationCopy: {
+    flex: 1
+  },
+  toggle: {
+    width: 52,
+    height: 32,
+    borderRadius: radii.pill,
+    backgroundColor: colors.soilSoft,
+    padding: 4,
+    alignItems: "flex-start"
+  },
+  toggleEnabled: {
+    backgroundColor: colors.leafDeep,
+    alignItems: "flex-end"
+  },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.white
+  },
+  toggleKnobEnabled: {
+    backgroundColor: colors.white
+  },
+  errorText: {
+    color: colors.coral,
+    fontSize: typography.small,
+    fontWeight: "900",
+    marginBottom: spacing.sm
   }
 });
-
