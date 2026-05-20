@@ -1,5 +1,6 @@
 -- Pattypan public-beta schema draft.
--- This file is planning-ready but not yet required by the app runtime.
+-- Apply in Supabase SQL editor before rls.sql.
+-- This does not enable the app's Supabase runtime by itself.
 
 create extension if not exists "pgcrypto";
 
@@ -79,9 +80,18 @@ create table if not exists public.plant_photos (
   created_at timestamptz not null default now()
 );
 
-alter table public.plant_instances
-  add constraint plant_instances_current_profile_photo_id_fkey
-  foreign key (current_profile_photo_id) references public.plant_photos(id) on delete set null;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'plant_instances_current_profile_photo_id_fkey'
+  ) then
+    alter table public.plant_instances
+      add constraint plant_instances_current_profile_photo_id_fkey
+      foreign key (current_profile_photo_id) references public.plant_photos(id) on delete set null;
+  end if;
+end $$;
 
 create table if not exists public.diagnoses (
   id uuid primary key default gen_random_uuid(),

@@ -60,6 +60,8 @@ Policies:
 - Users can delete their own objects.
 - Service role can read for provider proxy/diagnosis flows.
 
+Future photo display should use short-lived signed URLs. Do not make `plant-photos` public for beta.
+
 ## Server Function Trust Boundary
 
 Supabase Edge Functions or Vercel server routes should use service role only for trusted operations:
@@ -71,4 +73,3 @@ Supabase Edge Functions or Vercel server routes should use service role only for
 - Plant species cache enrichment.
 
 Never expose service-role keys to Expo, browser, or mobile clients.
-

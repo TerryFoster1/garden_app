@@ -29,6 +29,27 @@ Pattypan remains local-first by default:
 6. Run RLS SQL.
 7. Create private `plant-photos` bucket.
 
+## Supabase Setup Checklist
+
+Keep local alpha active while completing this checklist.
+
+- [ ] Confirm `.env.local` has `EXPO_PUBLIC_SUPABASE_URL`.
+- [ ] Confirm `.env.local` has `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- [ ] Confirm `.env.local` still has `EXPO_PUBLIC_ENABLE_SUPABASE=false`.
+- [ ] Open Supabase SQL Editor.
+- [ ] Run `supabase/schema.sql`.
+- [ ] Run `supabase/rls.sql`.
+- [ ] Create private Storage bucket `plant-photos`.
+- [ ] Add storage policies for `{user_id}/...` paths.
+- [ ] Create two test users.
+- [ ] Confirm user A can CRUD their own profile/garden/bed/plant rows.
+- [ ] Confirm user B cannot read or mutate user A rows.
+- [ ] Confirm authenticated users can read `plant_species_cache`.
+- [ ] Confirm client cannot write `subscriptions`.
+- [ ] Confirm client cannot write `entitlement_overrides`.
+- [ ] Confirm user-owned photo path access works.
+- [ ] Only after policy tests pass, test `EXPO_PUBLIC_ENABLE_SUPABASE=true` locally.
+
 ## Phase 3: Auth Adapter
 
 - Add Supabase email/password sign-up and sign-in.
