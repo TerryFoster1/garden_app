@@ -84,7 +84,7 @@ Schedules, garden management, harvesting, diagnosis, detailed bed state, and pla
 
 Pattypan's entry experience should no longer feel like an abstract app prototype. The landing page is the emotional first impression: image-first, botanical, cinematic, seasonal, and premium.
 
-Use real garden photography and soft overlays instead of blob shapes or developer-generated decoration. The composition should feel like a quiet garden journal cover: sunlight through leaves, tomatoes, herbs, greenhouse depth, soil, squash, and seasonal growth.
+Use real outdoor vegetable garden photography and soft overlays instead of blob shapes or developer-generated decoration. The composition should feel like a quiet garden journal cover: sunlight through leaves, tomatoes, herbs, soil, raised beds, squash, and seasonal growth.
 
 The authentication structure can stay simple, but the first landing state should be immersive. Sign up, sign in, and learn more should float over the image with restrained, tactile controls. Desktop should show the same intentional atmospheric composition, not a fake mobile mockup.
 

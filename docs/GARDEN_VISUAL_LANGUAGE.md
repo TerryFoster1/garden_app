@@ -98,9 +98,9 @@ Planner visuals should show plant spacing and warning zones. A tomato should vis
 
 The landing page should feel like opening a premium gardening journal: cinematic, warm, botanical, tactile, and quiet. It should use full-screen real photography, soft shadow overlays, restrained typography, and cream/forest-green controls.
 
-The current landing art direction uses a local greenhouse tomato photograph at `assets/backgrounds/pattypan-greenhouse-tomatoes.jpg`, sourced from Unsplash for the alpha build. The image direction is golden-hour growth, red and green fruit, glasshouse depth, leaves, soil, and seasonal warmth.
+The current landing art direction uses a local outdoor vegetable garden photograph at `assets/landing/pattypan-vegetable-garden-hero.jpg`, sourced from Unsplash for the alpha build. The image direction is real garden soil, tomato fruit, leaves, sunlight, and seasonal warmth.
 
-Do not use abstract blob compositions, generic geometric decorations, flat placeholder illustrations, or fake lifestyle people on the landing page. Visual depth should come from photography, natural light, soil texture, leaves, condensation, fruit, and garden atmosphere.
+Do not use abstract blob compositions, generic geometric decorations, flat placeholder illustrations, greenhouse imagery, or fake lifestyle people on the landing page. Visual depth should come from outdoor photography, natural light, soil texture, leaves, fruit, herbs, and garden atmosphere.
 
 The Pattypan wordmark should feel editorial and iconic. The tagline, Your Heirloom Secret, should read as warm and mysterious rather than salesy. Icons should be sparse and botanical; they support the brand but never dominate the composition.
 

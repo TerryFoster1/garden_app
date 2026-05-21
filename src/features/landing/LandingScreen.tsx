@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { signInLocal, signUpLocal, LocalSession } from "../../services/localAuth";
-import { colors, radii, spacing, typography } from "../../theme/tokens";
+import { colors, spacing, typography } from "../../theme/tokens";
 
-const landingBackground = require("../../../assets/backgrounds/pattypan-greenhouse-tomatoes.jpg");
+const landingBackground = require("../../../assets/landing/pattypan-vegetable-garden-hero.jpg");
 
 type LandingScreenProps = {
   onAuthenticated: (session: LocalSession, isNewAccount: boolean) => void;
@@ -15,6 +16,8 @@ type LandingScreenProps = {
 type AuthMode = "landing" | "sign-up" | "sign-in";
 
 export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenProps) {
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 900;
   const [mode, setMode] = useState<AuthMode>("landing");
   const [showLearnMore, setShowLearnMore] = useState(false);
   const [email, setEmail] = useState("");
@@ -45,26 +48,29 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
   }
 
   return (
-    <ImageBackground source={landingBackground} resizeMode="cover" style={styles.screen} imageStyle={styles.backgroundImage}>
+    <ImageBackground source={landingBackground} resizeMode="cover" style={[styles.screen, isDesktop && styles.desktopScreen]} imageStyle={styles.backgroundImage}>
       <View style={styles.scrim} />
-      <View style={styles.topVeil} />
-      <View style={styles.bottomVeil} />
+      <LinearGradient colors={["rgba(5,18,10,0.52)", "rgba(5,18,10,0)"]} style={styles.topVeil} />
+      <LinearGradient colors={["rgba(5,18,10,0)", "rgba(5,18,10,0.88)"]} style={styles.bottomVeil} />
 
-      <View style={styles.brand}>
-        <View style={styles.mark}>
-          <Ionicons name="leaf-outline" size={34} color="#f4ead2" />
-        </View>
-        <Text style={styles.name}>Pattypan</Text>
-        <View style={styles.dividerRow}>
-          <View style={styles.divider} />
-          <Ionicons name="leaf-outline" size={16} color="#d9c180" />
-          <View style={styles.divider} />
-        </View>
-        <Text style={styles.tagline}>Your Heirloom Secret</Text>
+      <View style={[styles.mark, isDesktop && styles.desktopMark]}>
+        <Ionicons name="leaf-outline" size={isDesktop ? 24 : 22} color="#fffdf3" />
       </View>
 
-      {mode === "landing" && showLearnMore ? (
-        <View style={styles.formCard}>
+      <View style={[styles.content, isDesktop && styles.desktopContent]}>
+        {isDesktop ? (
+          <View style={styles.desktopPanelMark}>
+            <Ionicons name="leaf-outline" size={24} color="#fffdf3" />
+          </View>
+        ) : null}
+        <Text style={[styles.name, isDesktop && styles.desktopName]}>Pattypan</Text>
+        <Text style={[styles.tagline, isDesktop && styles.desktopTagline]}>Your Heirloom Secret</Text>
+        {mode === "landing" && !showLearnMore ? (
+          <Text style={[styles.supportingCopy, isDesktop && styles.desktopSupportingCopy]}>Weather-aware care, plant memory, and garden guidance in one quiet companion.</Text>
+        ) : null}
+
+        {mode === "landing" && showLearnMore ? (
+        <View style={[styles.formCard, isDesktop && styles.desktopFormCard]}>
           <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => setShowLearnMore(false)}>
             <Ionicons name="chevron-back" size={18} color={colors.leafDeep} />
             <Text style={styles.backText}>Back</Text>
@@ -78,14 +84,12 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             <Text style={styles.submitText}>Create account</Text>
           </TouchableOpacity>
         </View>
-      ) : mode === "landing" ? (
-        <View style={styles.actions}>
+        ) : mode === "landing" ? (
+        <View style={[styles.actions, isDesktop && styles.desktopActions]}>
           <TouchableOpacity accessibilityRole="button" style={styles.signUpButton} onPress={() => setMode("sign-up")}>
-            <Ionicons name="leaf-outline" size={20} color="#f8f1df" />
             <Text style={styles.signUpText}>Sign up</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" style={styles.signInButton} onPress={() => setMode("sign-in")}>
-            <Ionicons name="leaf-outline" size={20} color="#113d28" />
             <Text style={styles.signInText}>Sign in</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -97,11 +101,10 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             }}
           >
             <Text style={styles.learnText}>Learn more</Text>
-            <Ionicons name="chevron-forward" size={22} color={colors.white} />
           </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.formCard}>
+        ) : (
+        <View style={[styles.formCard, isDesktop && styles.desktopFormCard]}>
           <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => { setMode("landing"); setError(""); }}>
             <Ionicons name="chevron-back" size={18} color={colors.leafDeep} />
             <Text style={styles.backText}>Back</Text>
@@ -117,7 +120,9 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             <Text style={styles.submitText}>{isSubmitting ? "Checking..." : mode === "sign-up" ? "Create account" : "Sign in"}</Text>
           </TouchableOpacity>
         </View>
-      )}
+        )}
+        {isDesktop && mode === "landing" && !showLearnMore ? <Text style={styles.desktopNote}>Best on mobile for camera, notifications, and garden checks.</Text> : null}
+      </View>
     </ImageBackground>
   );
 }
@@ -144,14 +149,21 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     minHeight: "100%",
-    justifyContent: "space-between",
-    paddingHorizontal: 30,
-    paddingTop: 86,
-    paddingBottom: 34,
+    justifyContent: "flex-end",
+    paddingHorizontal: 28,
+    paddingTop: 56,
+    paddingBottom: 42,
     overflow: "hidden"
   },
+  desktopScreen: {
+    justifyContent: "center",
+    alignItems: "flex-start",
+    paddingLeft: "8%",
+    paddingRight: 56,
+    paddingVertical: 56
+  },
   backgroundImage: {
-    transform: [{ scale: 1.04 }]
+    transform: [{ scale: 1.08 }]
   },
   scrim: {
     position: "absolute",
@@ -159,127 +171,184 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: "rgba(6, 26, 17, 0.36)"
+    backgroundColor: "rgba(5, 18, 10, 0.48)"
   },
   topVeil: {
     position: "absolute",
     left: 0,
     right: 0,
     top: 0,
-    height: 320,
-    backgroundColor: "rgba(4, 19, 12, 0.28)"
+    height: 180,
+    backgroundColor: "rgba(5, 18, 10, 0.42)"
   },
   bottomVeil: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 380,
-    backgroundColor: "rgba(3, 16, 10, 0.72)"
+    height: "58%",
+    backgroundColor: "rgba(5, 18, 10, 0.88)"
   },
-  brand: {
-    alignItems: "center",
-    gap: 10,
-    marginTop: 8
+  content: {
+    width: "100%",
+    maxWidth: 330,
+    alignSelf: "flex-start"
+  },
+  desktopContent: {
+    width: 460,
+    maxWidth: 460,
+    padding: 40,
+    borderRadius: 32,
+    backgroundColor: "rgba(7, 28, 15, 0.48)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.35,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 24 }
   },
   mark: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    position: "absolute",
+    left: 28,
+    top: 56,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(247,241,229,0.12)",
+    backgroundColor: "rgba(255,255,255,0.14)",
     borderWidth: 1,
-    borderColor: "rgba(247,241,229,0.34)"
+    borderColor: "rgba(255,255,255,0.2)"
+  },
+  desktopMark: {
+    display: "none"
+  },
+  desktopPanelMark: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    marginBottom: 24
   },
   name: {
-    color: "#fbf4e4",
-    fontSize: 64,
-    fontFamily: "serif",
-    fontWeight: "600",
-    letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.48)",
+    color: "#fffdf3",
+    fontSize: 58,
+    lineHeight: 56,
+    fontWeight: "800",
+    letterSpacing: -1.5,
+    textShadowColor: "rgba(0,0,0,0.42)",
     textShadowRadius: 18,
     textShadowOffset: { width: 0, height: 6 }
   },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginTop: -2
-  },
-  divider: {
-    width: 64,
-    height: 1,
-    backgroundColor: "rgba(217,193,128,0.7)"
+  desktopName: {
+    fontSize: 72,
+    lineHeight: 68,
+    maxWidth: 390
   },
   tagline: {
-    color: "#e4d4a5",
-    fontSize: 23,
-    fontFamily: "serif",
-    fontWeight: "500",
+    color: "#f6d36b",
+    fontSize: 22,
+    lineHeight: 27,
+    fontWeight: "600",
+    marginTop: 10,
     textShadowColor: "rgba(0,0,0,0.42)",
     textShadowRadius: 10,
     textShadowOffset: { width: 0, height: 4 }
   },
+  desktopTagline: {
+    fontSize: 26,
+    lineHeight: 32
+  },
+  supportingCopy: {
+    maxWidth: 310,
+    color: "rgba(255,253,243,0.86)",
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "600",
+    marginTop: 16,
+    textShadowColor: "rgba(0,0,0,0.38)",
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 3 }
+  },
+  desktopSupportingCopy: {
+    fontSize: 17,
+    lineHeight: 26,
+    maxWidth: 390
+  },
   actions: {
-    gap: 13
+    width: "100%",
+    gap: 12,
+    marginTop: 32
+  },
+  desktopActions: {
+    maxWidth: 340
   },
   signUpButton: {
-    minHeight: 60,
-    borderRadius: radii.pill,
-    backgroundColor: "rgba(11, 67, 43, 0.86)",
-    borderWidth: 1,
-    borderColor: "rgba(248,241,223,0.2)",
-    flexDirection: "row",
+    height: 56,
+    borderRadius: 999,
+    backgroundColor: "#fffdf3",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.sm,
     shadowColor: "#000000",
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
+    shadowOpacity: 0.25,
+    shadowRadius: 28,
     shadowOffset: { width: 0, height: 10 }
   },
   signUpText: {
-    color: "#fff9ea",
-    fontSize: typography.body,
-    fontWeight: "800"
+    color: "#12351f",
+    fontSize: 17,
+    fontWeight: "700"
   },
   signInButton: {
-    minHeight: 60,
-    borderRadius: radii.pill,
-    backgroundColor: "rgba(248, 241, 223, 0.9)",
+    height: 54,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.14)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.46)",
-    flexDirection: "row",
+    borderColor: "rgba(255,255,255,0.28)",
     alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm
+    justifyContent: "center"
   },
   signInText: {
-    color: "#113d28",
-    fontSize: typography.body,
-    fontWeight: "800"
+    color: "#fffdf3",
+    fontSize: 17,
+    fontWeight: "700"
   },
   learnButton: {
-    minHeight: 46,
+    minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs
+    marginTop: 6
   },
   learnText: {
-    color: "#fff9ea",
-    fontSize: typography.small,
-    fontWeight: "800"
+    color: "rgba(255,253,243,0.78)",
+    fontSize: 14,
+    fontWeight: "700"
+  },
+  desktopNote: {
+    color: "rgba(255,253,243,0.7)",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+    marginTop: 20,
+    maxWidth: 340
   },
   formCard: {
-    borderRadius: 28,
-    backgroundColor: "rgba(255,253,248,0.88)",
+    width: "100%",
+    borderRadius: 24,
+    backgroundColor: "rgba(255,253,248,0.92)",
     padding: spacing.lg,
     gap: spacing.sm,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.36)"
+    borderColor: "rgba(255,255,255,0.36)",
+    marginTop: 24
+  },
+  desktopFormCard: {
+    maxWidth: 380
   },
   backRow: {
     flexDirection: "row",
@@ -326,7 +395,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     minHeight: 54,
-    borderRadius: radii.pill,
+    borderRadius: 999,
     backgroundColor: colors.leafDeep,
     alignItems: "center",
     justifyContent: "center"
