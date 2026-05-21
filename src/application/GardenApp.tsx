@@ -934,8 +934,8 @@ export function GardenApp() {
   }
 
   const appContent =
-    overlay === "landing" ? (
-      <LandingScreen onAuthenticated={handleAuthenticated} onLearnMore={() => setOverlay("landing")} />
+    overlay === "landing" || overlay === "onboarding" ? (
+      renderMainScreen()
     ) : (
     <View style={styles.app}>
       <ScrollView contentContainerStyle={styles.screen}>{renderMainScreen()}</ScrollView>
@@ -962,7 +962,7 @@ export function GardenApp() {
     </View>
   );
 
-  if (isDesktopWeb && overlay === "landing") {
+  if (isDesktopWeb && (overlay === "landing" || overlay === "onboarding")) {
     return appContent;
   }
 
