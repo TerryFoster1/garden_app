@@ -38,6 +38,8 @@ Desktop users can continue in browser, but the app should make mobile feel natur
 - Completing quick garden tasks one-handed.
 - Updating growth photos in the garden.
 
+The exception is the unauthenticated landing page. Landing should be immersive and full-bleed on both mobile and desktop, using botanical photography as the primary experience rather than putting the landing screen inside a phone mockup.
+
 ## Navigation Philosophy
 
 Primary bottom navigation:
@@ -62,6 +64,12 @@ The mobile Home structure is:
 3. One strong Add Plant CTA.
 
 This leaves the thumb path clear and keeps the fixed bottom nav from competing with redundant action grids.
+
+## Landing Mobile Feel
+
+The landing page should be strongest on a phone in portrait orientation. Pattypan, Your Heirloom Secret, and the auth controls should sit within the safe area, remain readable over photography, and avoid crowded edges on Samsung S23-class screens.
+
+The first impression should be calm and emotional: warm garden light, real plants, soil, greenhouse atmosphere, and a restrained set of actions. Avoid decorative blobs, abstract geometry, and oversized synthetic buttons.
 
 ## Interaction Size
 

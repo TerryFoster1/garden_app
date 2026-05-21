@@ -80,6 +80,14 @@ Home is not a dashboard and not the whole app. It is an operational overview for
 
 Schedules, garden management, harvesting, diagnosis, detailed bed state, and planning belong in My Garden or Library. Home should stay calm by showing only what affects the user's immediate outdoor decision.
 
+## Landing Art Direction
+
+Pattypan's entry experience should no longer feel like an abstract app prototype. The landing page is the emotional first impression: image-first, botanical, cinematic, seasonal, and premium.
+
+Use real garden photography and soft overlays instead of blob shapes or developer-generated decoration. The composition should feel like a quiet garden journal cover: sunlight through leaves, tomatoes, herbs, greenhouse depth, soil, squash, and seasonal growth.
+
+The authentication structure can stay simple, but the first landing state should be immersive. Sign up, sign in, and learn more should float over the image with restrained, tactile controls. Desktop should show the same intentional atmospheric composition, not a fake mobile mockup.
+
 ## Navigation Cleanup
 
 Bottom nav is Home, My Garden, Library, Profile. Scan and Planner are not primary destinations. They are workflow actions inside Add Plant, Library, Bed Detail, Add/Edit Bed, and AI Optimize Bed.

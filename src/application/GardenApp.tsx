@@ -962,6 +962,10 @@ export function GardenApp() {
     </View>
   );
 
+  if (isDesktopWeb && overlay === "landing") {
+    return appContent;
+  }
+
   if (isDesktopWeb) {
     return (
       <View style={styles.desktopRoot}>

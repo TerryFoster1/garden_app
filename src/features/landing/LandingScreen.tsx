@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { signInLocal, signUpLocal, LocalSession } from "../../services/localAuth";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
+
+const landingBackground = require("../../../assets/backgrounds/pattypan-greenhouse-tomatoes.jpg");
 
 type LandingScreenProps = {
   onAuthenticated: (session: LocalSession, isNewAccount: boolean) => void;
@@ -43,24 +45,19 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.skyGlow} />
-      <View style={styles.gardenBackdrop}>
-        <View style={styles.leafMass} />
-        <View style={styles.tomatoCluster} />
-        <View style={styles.squash} />
-        <View style={styles.flowerOne} />
-        <View style={styles.flowerTwo} />
-      </View>
+    <ImageBackground source={landingBackground} resizeMode="cover" style={styles.screen} imageStyle={styles.backgroundImage}>
+      <View style={styles.scrim} />
+      <View style={styles.topVeil} />
+      <View style={styles.bottomVeil} />
 
       <View style={styles.brand}>
         <View style={styles.mark}>
-          <Ionicons name="leaf" size={48} color={colors.sage} />
+          <Ionicons name="leaf-outline" size={34} color="#f4ead2" />
         </View>
         <Text style={styles.name}>Pattypan</Text>
         <View style={styles.dividerRow}>
           <View style={styles.divider} />
-          <Ionicons name="leaf-outline" size={20} color={colors.sage} />
+          <Ionicons name="leaf-outline" size={16} color="#d9c180" />
           <View style={styles.divider} />
         </View>
         <Text style={styles.tagline}>Your Heirloom Secret</Text>
@@ -84,11 +81,11 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
       ) : mode === "landing" ? (
         <View style={styles.actions}>
           <TouchableOpacity accessibilityRole="button" style={styles.signUpButton} onPress={() => setMode("sign-up")}>
-            <Ionicons name="leaf" size={22} color={colors.sage} />
+            <Ionicons name="leaf-outline" size={20} color="#f8f1df" />
             <Text style={styles.signUpText}>Sign up</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" style={styles.signInButton} onPress={() => setMode("sign-in")}>
-            <Ionicons name="leaf-outline" size={24} color={colors.leafDeep} />
+            <Ionicons name="leaf-outline" size={20} color="#113d28" />
             <Text style={styles.signInText}>Sign in</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -121,7 +118,7 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -147,140 +144,122 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     minHeight: "100%",
-    backgroundColor: "#132719",
     justifyContent: "space-between",
-    paddingHorizontal: spacing.xl,
-    paddingTop: 82,
-    paddingBottom: 38,
+    paddingHorizontal: 30,
+    paddingTop: 86,
+    paddingBottom: 34,
     overflow: "hidden"
   },
-  skyGlow: {
-    position: "absolute",
-    right: -72,
-    top: -62,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(244,200,95,0.42)"
+  backgroundImage: {
+    transform: [{ scale: 1.04 }]
   },
-  gardenBackdrop: {
+  scrim: {
     position: "absolute",
-    left: -40,
-    right: -40,
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(6, 26, 17, 0.36)"
+  },
+  topVeil: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 320,
+    backgroundColor: "rgba(4, 19, 12, 0.28)"
+  },
+  bottomVeil: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     bottom: 0,
     height: 380,
-    backgroundColor: "#4b3628",
-    borderTopLeftRadius: 86,
-    borderTopRightRadius: 86
-  },
-  leafMass: {
-    position: "absolute",
-    left: 20,
-    bottom: 110,
-    width: 220,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: "rgba(79,138,95,0.9)"
-  },
-  tomatoCluster: {
-    position: "absolute",
-    right: 70,
-    bottom: 150,
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: colors.coral
-  },
-  squash: {
-    position: "absolute",
-    left: 130,
-    bottom: 92,
-    width: 132,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: colors.surfaceWarm
-  },
-  flowerOne: {
-    position: "absolute",
-    right: 38,
-    bottom: 92,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.sun
-  },
-  flowerTwo: {
-    position: "absolute",
-    left: 42,
-    bottom: 72,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#e58a3f"
+    backgroundColor: "rgba(3, 16, 10, 0.72)"
   },
   brand: {
     alignItems: "center",
-    gap: spacing.sm
+    gap: 10,
+    marginTop: 8
   },
   mark: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,253,248,0.14)"
+    backgroundColor: "rgba(247,241,229,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(247,241,229,0.34)"
   },
   name: {
-    color: colors.surface,
-    fontSize: 58,
-    fontWeight: "800",
-    letterSpacing: 0
+    color: "#fbf4e4",
+    fontSize: 64,
+    fontFamily: "serif",
+    fontWeight: "600",
+    letterSpacing: 0,
+    textShadowColor: "rgba(0,0,0,0.48)",
+    textShadowRadius: 18,
+    textShadowOffset: { width: 0, height: 6 }
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm
+    gap: 12,
+    marginTop: -2
   },
   divider: {
-    width: 78,
+    width: 64,
     height: 1,
-    backgroundColor: colors.sage
+    backgroundColor: "rgba(217,193,128,0.7)"
   },
   tagline: {
-    color: colors.sage,
-    fontSize: typography.title,
-    fontWeight: "800"
+    color: "#e4d4a5",
+    fontSize: 23,
+    fontFamily: "serif",
+    fontWeight: "500",
+    textShadowColor: "rgba(0,0,0,0.42)",
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 4 }
   },
   actions: {
-    gap: spacing.md
+    gap: 13
   },
   signUpButton: {
-    minHeight: 76,
+    minHeight: 60,
     borderRadius: radii.pill,
-    backgroundColor: colors.leafDeep,
+    backgroundColor: "rgba(11, 67, 43, 0.86)",
+    borderWidth: 1,
+    borderColor: "rgba(248,241,223,0.2)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.md
+    gap: spacing.sm,
+    shadowColor: "#000000",
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 }
   },
   signUpText: {
-    color: colors.white,
-    fontSize: typography.section,
-    fontWeight: "900"
+    color: "#fff9ea",
+    fontSize: typography.body,
+    fontWeight: "800"
   },
   signInButton: {
-    minHeight: 76,
+    minHeight: 60,
     borderRadius: radii.pill,
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(248, 241, 223, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.46)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.md
+    gap: spacing.sm
   },
   signInText: {
-    color: colors.leafDeep,
-    fontSize: typography.section,
-    fontWeight: "900"
+    color: "#113d28",
+    fontSize: typography.body,
+    fontWeight: "800"
   },
   learnButton: {
     minHeight: 46,
@@ -290,15 +269,17 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   learnText: {
-    color: colors.white,
-    fontSize: typography.body,
-    fontWeight: "900"
+    color: "#fff9ea",
+    fontSize: typography.small,
+    fontWeight: "800"
   },
   formCard: {
-    borderRadius: 30,
-    backgroundColor: "rgba(255,253,248,0.94)",
+    borderRadius: 28,
+    backgroundColor: "rgba(255,253,248,0.88)",
     padding: spacing.lg,
-    gap: spacing.sm
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.36)"
   },
   backRow: {
     flexDirection: "row",
