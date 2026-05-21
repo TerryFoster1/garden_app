@@ -48,43 +48,36 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
   }
 
   return (
-    <ImageBackground source={landingBackground} resizeMode="cover" style={[styles.screen, isDesktop && styles.desktopScreen]} imageStyle={styles.backgroundImage}>
-      <View style={styles.scrim} />
-      <LinearGradient colors={["rgba(5,18,10,0.52)", "rgba(5,18,10,0)"]} style={styles.topVeil} />
-      <LinearGradient colors={["rgba(5,18,10,0)", "rgba(5,18,10,0.88)"]} style={styles.bottomVeil} />
+    <ImageBackground source={landingBackground} resizeMode="cover" style={styles.screen} imageStyle={styles.backgroundImage}>
+      <LinearGradient colors={["rgba(48,75,13,0.46)", "rgba(21,43,10,0.62)"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={["rgba(4,16,8,0.34)", "rgba(4,16,8,0)", "rgba(4,16,8,0.62)"]} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
 
-      <View style={[styles.mark, isDesktop && styles.desktopMark]}>
-        <Ionicons name="leaf-outline" size={isDesktop ? 24 : 22} color="#fffdf3" />
+      <View style={[styles.brandCluster, isDesktop && styles.desktopBrandCluster]}>
+        <View style={styles.brandRow}>
+          <View style={styles.brandMark}>
+            <Ionicons name="leaf-outline" size={isDesktop ? 35 : 31} color="#fffdf3" />
+          </View>
+          <Text style={[styles.brandName, isDesktop && styles.desktopBrandName]}>Pattypan</Text>
+        </View>
+        <Text style={[styles.brandSubtitle, isDesktop && styles.desktopBrandSubtitle]}>Your Garden Companion</Text>
       </View>
 
-      <View style={[styles.content, isDesktop && styles.desktopContent]}>
-        {isDesktop ? (
-          <View style={styles.desktopPanelMark}>
-            <Ionicons name="leaf-outline" size={24} color="#fffdf3" />
-          </View>
-        ) : null}
-        <Text style={[styles.name, isDesktop && styles.desktopName]}>Pattypan</Text>
-        <Text style={[styles.tagline, isDesktop && styles.desktopTagline]}>Your Heirloom Secret</Text>
-        {mode === "landing" && !showLearnMore ? (
-          <Text style={[styles.supportingCopy, isDesktop && styles.desktopSupportingCopy]}>Weather-aware care, plant memory, and garden guidance in one quiet companion.</Text>
-        ) : null}
-
-        {mode === "landing" && showLearnMore ? (
-        <View style={[styles.formCard, isDesktop && styles.desktopFormCard]}>
+      {mode === "landing" && showLearnMore ? (
+        <View style={[styles.panel, isDesktop && styles.desktopPanel]}>
           <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => setShowLearnMore(false)}>
             <Ionicons name="chevron-back" size={18} color={colors.leafDeep} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.formTitle}>A garden companion that remembers.</Text>
-          <Text style={styles.formHelp}>Pattypan helps you build a living record of your plants, beds, weather, diagnoses, and harvest timing without turning gardening into a spreadsheet.</Text>
+          <Text style={styles.panelTitle}>A garden companion that remembers.</Text>
+          <Text style={styles.panelHelp}>Pattypan helps you track plants, weather, diagnoses, tasks, and garden memories without turning gardening into a spreadsheet.</Text>
           <LearnItem icon="camera-outline" text="Identify plants and problems from photos, then confirm before anything is saved." />
-          <LearnItem icon="partly-sunny-outline" text="Use location-aware weather to turn frost, rain, heat, wind, and humidity into practical garden actions." />
-          <LearnItem icon="leaf-outline" text="Track each plant as a specific living instance with photos, care tasks, and growth history." />
+          <LearnItem icon="partly-sunny-outline" text="Turn frost, rain, heat, wind, and humidity into practical garden actions." />
+          <LearnItem icon="leaf-outline" text="Track each plant as a living instance with photos, care tasks, and growth history." />
           <TouchableOpacity accessibilityRole="button" style={styles.submitButton} onPress={() => { setShowLearnMore(false); setMode("sign-up"); }}>
             <Text style={styles.submitText}>Create account</Text>
           </TouchableOpacity>
         </View>
-        ) : mode === "landing" ? (
+      ) : mode === "landing" ? (
         <View style={[styles.actions, isDesktop && styles.desktopActions]}>
           <TouchableOpacity accessibilityRole="button" style={styles.signUpButton} onPress={() => setMode("sign-up")}>
             <Text style={styles.signUpText}>Sign up</Text>
@@ -103,14 +96,14 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             <Text style={styles.learnText}>Learn more</Text>
           </TouchableOpacity>
         </View>
-        ) : (
-        <View style={[styles.formCard, isDesktop && styles.desktopFormCard]}>
+      ) : (
+        <View style={[styles.panel, isDesktop && styles.desktopPanel]}>
           <TouchableOpacity accessibilityRole="button" style={styles.backRow} onPress={() => { setMode("landing"); setError(""); }}>
             <Ionicons name="chevron-back" size={18} color={colors.leafDeep} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.formTitle}>{mode === "sign-up" ? "Create local account" : "Sign in locally"}</Text>
-          <Text style={styles.formHelp}>Prototype account stored only on this device. Production auth must be server-side before public launch.</Text>
+          <Text style={styles.panelTitle}>{mode === "sign-up" ? "Create local account" : "Sign in locally"}</Text>
+          <Text style={styles.panelHelp}>Prototype account stored only on this device. Production auth must be server-side before public launch.</Text>
           {mode === "sign-up" ? <AuthInput value={displayName} onChangeText={setDisplayName} placeholder="Display name" icon="person-outline" /> : null}
           <AuthInput value={email} onChangeText={setEmail} placeholder="Email" icon="mail-outline" keyboardType="email-address" />
           <AuthInput value={password} onChangeText={setPassword} placeholder="Password" icon="lock-closed-outline" secureTextEntry />
@@ -120,9 +113,7 @@ export function LandingScreen({ onAuthenticated, onLearnMore }: LandingScreenPro
             <Text style={styles.submitText}>{isSubmitting ? "Checking..." : mode === "sign-up" ? "Create account" : "Sign in"}</Text>
           </TouchableOpacity>
         </View>
-        )}
-        {isDesktop && mode === "landing" && !showLearnMore ? <Text style={styles.desktopNote}>Best on mobile for camera, notifications, and garden checks.</Text> : null}
-      </View>
+      )}
     </ImageBackground>
   );
 }
@@ -149,143 +140,81 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     minHeight: "100%",
-    justifyContent: "flex-end",
-    paddingHorizontal: 28,
-    paddingTop: 56,
-    paddingBottom: 42,
     overflow: "hidden"
   },
-  desktopScreen: {
-    justifyContent: "center",
-    alignItems: "flex-start",
-    paddingLeft: "8%",
-    paddingRight: 56,
-    paddingVertical: 56
-  },
   backgroundImage: {
-    transform: [{ scale: 1.08 }]
+    transform: [{ scale: 1.04 }]
   },
-  scrim: {
+  brandCluster: {
     position: "absolute",
     left: 0,
     right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: "rgba(5, 18, 10, 0.48)"
+    top: "41%",
+    alignItems: "center"
   },
-  topVeil: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 180,
-    backgroundColor: "rgba(5, 18, 10, 0.42)"
+  desktopBrandCluster: {
+    top: "40%"
   },
-  bottomVeil: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "58%",
-    backgroundColor: "rgba(5, 18, 10, 0.88)"
-  },
-  content: {
-    width: "100%",
-    maxWidth: 330,
-    alignSelf: "flex-start"
-  },
-  desktopContent: {
-    width: 460,
-    maxWidth: 460,
-    padding: 40,
-    borderRadius: 32,
-    backgroundColor: "rgba(7, 28, 15, 0.48)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-    shadowColor: "#000000",
-    shadowOpacity: 0.35,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 24 }
-  },
-  mark: {
-    position: "absolute",
-    left: 28,
-    top: 56,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  brandRow: {
+    width: 348,
+    maxWidth: "82%",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)"
+    gap: 13
   },
-  desktopMark: {
-    display: "none"
-  },
-  desktopPanelMark: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  brandMark: {
+    width: 53,
+    height: 53,
+    borderRadius: 27,
+    borderWidth: 2,
+    borderColor: "#fffdf3",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    marginBottom: 24
+    justifyContent: "center"
   },
-  name: {
+  brandName: {
     color: "#fffdf3",
+    fontSize: 40,
+    lineHeight: 45,
+    fontFamily: Platform.OS === "web" ? "Georgia, serif" : "serif",
+    fontWeight: "400",
+    letterSpacing: -0.6,
+    textShadowColor: "rgba(0,0,0,0.25)",
+    textShadowRadius: 14,
+    textShadowOffset: { width: 0, height: 8 }
+  },
+  desktopBrandName: {
     fontSize: 58,
-    lineHeight: 56,
-    fontWeight: "800",
-    letterSpacing: -1.5,
-    textShadowColor: "rgba(0,0,0,0.42)",
-    textShadowRadius: 18,
-    textShadowOffset: { width: 0, height: 6 }
+    lineHeight: 64
   },
-  desktopName: {
-    fontSize: 72,
-    lineHeight: 68,
-    maxWidth: 390
-  },
-  tagline: {
-    color: "#f6d36b",
-    fontSize: 22,
-    lineHeight: 27,
-    fontWeight: "600",
-    marginTop: 10,
-    textShadowColor: "rgba(0,0,0,0.42)",
+  brandSubtitle: {
+    color: "#fffdf3",
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "400",
+    marginTop: 7,
+    textShadowColor: "rgba(0,0,0,0.24)",
     textShadowRadius: 10,
-    textShadowOffset: { width: 0, height: 4 }
+    textShadowOffset: { width: 0, height: 5 }
   },
-  desktopTagline: {
-    fontSize: 26,
-    lineHeight: 32
-  },
-  supportingCopy: {
-    maxWidth: 310,
-    color: "rgba(255,253,243,0.86)",
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "600",
-    marginTop: 16,
-    textShadowColor: "rgba(0,0,0,0.38)",
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 3 }
-  },
-  desktopSupportingCopy: {
-    fontSize: 17,
+  desktopBrandSubtitle: {
+    fontSize: 19,
     lineHeight: 26,
-    maxWidth: 390
+    marginTop: 9
   },
   actions: {
-    width: "100%",
-    gap: 12,
-    marginTop: 32
+    position: "absolute",
+    left: 38,
+    right: 38,
+    bottom: 46,
+    gap: 12
   },
   desktopActions: {
-    maxWidth: 340
+    width: 348,
+    left: "50%",
+    right: undefined,
+    marginLeft: -174,
+    bottom: 68
   },
   signUpButton: {
     height: 56,
@@ -319,7 +248,6 @@ const styles = StyleSheet.create({
   },
   learnButton: {
     minHeight: 32,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 6
@@ -329,26 +257,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700"
   },
-  desktopNote: {
-    color: "rgba(255,253,243,0.7)",
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
-    marginTop: 20,
-    maxWidth: 340
-  },
-  formCard: {
-    width: "100%",
+  panel: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: 40,
     borderRadius: 24,
     backgroundColor: "rgba(255,253,248,0.92)",
     padding: spacing.lg,
     gap: spacing.sm,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.36)",
-    marginTop: 24
+    borderColor: "rgba(255,255,255,0.36)"
   },
-  desktopFormCard: {
-    maxWidth: 380
+  desktopPanel: {
+    width: 380,
+    left: "50%",
+    right: undefined,
+    marginLeft: -190,
+    bottom: 56
   },
   backRow: {
     flexDirection: "row",
@@ -360,12 +286,12 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "900"
   },
-  formTitle: {
+  panelTitle: {
     color: colors.leafDeep,
     fontSize: typography.section,
     fontWeight: "900"
   },
-  formHelp: {
+  panelHelp: {
     color: colors.textMuted,
     fontSize: typography.caption,
     lineHeight: 17,

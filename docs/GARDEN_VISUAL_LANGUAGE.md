@@ -96,12 +96,12 @@ Planner visuals should show plant spacing and warning zones. A tomato should vis
 
 ## Pattypan Landing
 
-The landing page should feel like opening a premium gardening journal: cinematic, warm, botanical, tactile, and quiet. It should use full-screen real photography, soft shadow overlays, restrained typography, and cream/forest-green controls.
+The landing page follows the Figma community frame structure: full-screen photography, dark green overlay, centered compact brand cluster, small subtitle, and quiet auth actions. It should feel like opening a premium gardening journal: cinematic, warm, botanical, tactile, and quiet.
 
 The current landing art direction uses a local outdoor vegetable garden photograph at `assets/landing/pattypan-vegetable-garden-hero.jpg`, sourced from Unsplash for the alpha build. The image direction is real garden soil, tomato fruit, leaves, sunlight, and seasonal warmth.
 
 Do not use abstract blob compositions, generic geometric decorations, flat placeholder illustrations, greenhouse imagery, or fake lifestyle people on the landing page. Visual depth should come from outdoor photography, natural light, soil texture, leaves, fruit, herbs, and garden atmosphere.
 
-The Pattypan wordmark should feel editorial and iconic. The tagline, Your Heirloom Secret, should read as warm and mysterious rather than salesy. Icons should be sparse and botanical; they support the brand but never dominate the composition.
+The Pattypan wordmark should feel editorial and iconic. The subtitle, Your Garden Companion, should read as simple and calm rather than salesy. Icons should be sparse and botanical; they support the brand but never dominate the composition.
 
 Buttons should feel tactile and premium, not synthetic. Prefer deep translucent green, warm cream, soft borders, and gentle elevation over oversized flat CTA bars.

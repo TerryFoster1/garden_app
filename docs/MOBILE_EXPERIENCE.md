@@ -67,7 +67,7 @@ This leaves the thumb path clear and keeps the fixed bottom nav from competing w
 
 ## Landing Mobile Feel
 
-The landing page should be strongest on a phone in portrait orientation. Pattypan, Your Heirloom Secret, and the auth controls should sit within the safe area, remain readable over photography, and avoid crowded edges on Samsung S23-class screens.
+The landing page should be strongest on a phone in portrait orientation. Pattypan, Your Garden Companion, and the auth controls should sit within the safe area, remain readable over photography, and avoid crowded edges on Samsung S23-class screens.
 
 The first impression should be calm and emotional: warm garden light, real outdoor plants, soil, vegetables, herbs, and a restrained set of actions. Avoid decorative blobs, abstract geometry, greenhouse imagery, and oversized synthetic buttons.
 
