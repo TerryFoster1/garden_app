@@ -8,7 +8,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { ScreenHeader } from "../../components/ScreenHeader";
 import { GardenHomeModel, PlantHealthScan } from "../../domain";
 import { aiRecommendationProvider, AiAssistantResponse } from "../../services/aiRecommendationProvider";
-import { plantIdentificationProvider, PlantIdentificationMatch } from "../../services/plantIdentificationProvider";
+import { MockPlantIdentificationResult, plantIdentificationProvider, PlantIdentificationMatch } from "../../services/plantIdentificationProvider";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type DiagnosisScreenProps = {
@@ -29,6 +29,8 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
   const [scan, setScan] = useState<PlantHealthScan | null>(null);
   const [answer, setAnswer] = useState<AiAssistantResponse | null>(null);
   const [matches, setMatches] = useState<PlantIdentificationMatch[]>([]);
+  const [identificationDebug, setIdentificationDebug] = useState<MockPlantIdentificationResult["debug"] | null>(null);
+  const [identificationError, setIdentificationError] = useState("");
   const linkedPlant = model.plantInstances.find((plant) => plant.id === plantId);
 
   async function pickImage(source: "camera" | "library") {
@@ -50,6 +52,9 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
       setPhotoUri(result.assets[0].uri);
       setScan(null);
       setAnswer(null);
+      setMatches([]);
+      setIdentificationDebug(null);
+      setIdentificationError("");
     }
   }
 
@@ -70,6 +75,8 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
         plantIdentificationProvider.identifyPlant(photoUri).catch(() => null)
       ]);
       setMatches(identification?.matches ?? []);
+      setIdentificationDebug(identification?.debug ?? null);
+      setIdentificationError("");
       const topMatch = identification?.matches[0]?.commonName;
       const explanation = await aiRecommendationProvider.explainDiagnosis({
         plantName: linkedPlant?.nickname,
@@ -95,6 +102,8 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
         actions: ["Check soil moisture.", "Inspect both sides of leaves.", "Remove badly diseased leaves only if safe.", "Create a follow-up task if the issue is spreading."]
       });
       setMatches([]);
+      setIdentificationDebug(null);
+      setIdentificationError("Plant identity lookup was unavailable; diagnosis used local symptom guidance.");
     } finally {
       setIsRunning(false);
     }
@@ -154,15 +163,22 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
 
       {matches.length > 0 ? (
         <View style={styles.matchPanel}>
-          <Text style={styles.matchLabel}>Possible plant identity</Text>
+          <Text style={styles.matchLabel}>{identificationDebug?.providerUsed === "PlantNet" ? "Possible PlantNet identity" : "Possible local demo identity"}</Text>
+          {identificationDebug?.fallbackTriggered ? <Text style={styles.warningText}>Using local demo identification: {identificationDebug.fallbackReason}</Text> : null}
+          {matches[0]?.confidence && matches[0].confidence < 0.35 ? <Text style={styles.warningText}>We're not confident. Try another photo or search manually.</Text> : null}
           {matches.slice(0, 3).map((match) => (
             <View key={match.id} style={styles.matchRow}>
-              <Text style={styles.matchName}>{match.commonName}</Text>
+              <View style={styles.matchCopy}>
+                <Text style={styles.matchName}>{match.commonName}</Text>
+                {match.scientificName ? <Text style={styles.matchScientific}>{match.scientificName}</Text> : null}
+              </View>
               <Text style={styles.matchScore}>{Math.round(match.confidence * 100)}%</Text>
             </View>
           ))}
+          {isDevelopmentMode() && identificationDebug ? <ProviderDebugPanel debug={identificationDebug} /> : null}
         </View>
       ) : null}
+      {identificationError ? <Text style={styles.warningText}>{identificationError}</Text> : null}
 
       {answer ? (
         <View style={styles.resultCard}>
@@ -174,6 +190,25 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
       ) : null}
     </View>
   );
+}
+
+function ProviderDebugPanel({ debug }: { debug: MockPlantIdentificationResult["debug"] }) {
+  return (
+    <View style={styles.debugPanel}>
+      <Text style={styles.debugTitle}>Development identification status</Text>
+      <Text style={styles.debugText}>Provider used: {debug.providerUsed}</Text>
+      <Text style={styles.debugText}>API key detected: {debug.apiKeyDetected ? "yes" : "no"}</Text>
+      <Text style={styles.debugText}>Image URI type: {debug.imageUriType}</Text>
+      <Text style={styles.debugText}>Response status: {debug.responseStatus ?? "n/a"}</Text>
+      <Text style={styles.debugText}>Candidates returned: {debug.candidateCount}</Text>
+      <Text style={styles.debugText}>Fallback triggered: {debug.fallbackTriggered ? "yes" : "no"}</Text>
+      {debug.fallbackReason ? <Text style={styles.debugText}>Fallback reason: {debug.fallbackReason}</Text> : null}
+    </View>
+  );
+}
+
+function isDevelopmentMode() {
+  return process.env.NODE_ENV !== "production";
 }
 
 const styles = StyleSheet.create({
@@ -199,7 +234,13 @@ const styles = StyleSheet.create({
   matchPanel: { borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
   matchLabel: { color: colors.leaf, fontSize: typography.caption, fontWeight: "900", textTransform: "uppercase" },
   matchRow: { minHeight: 38, borderRadius: 14, backgroundColor: colors.surfaceWarm, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  matchCopy: { flex: 1, paddingVertical: spacing.sm },
   matchName: { color: colors.text, fontSize: typography.small, fontWeight: "900" },
+  matchScientific: { color: colors.textMuted, fontSize: typography.caption, fontWeight: "700", marginTop: 2 },
   matchScore: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900" },
-  resultText: { color: colors.text, fontSize: typography.small, lineHeight: 21, fontWeight: "800" }
+  resultText: { color: colors.text, fontSize: typography.small, lineHeight: 21, fontWeight: "800" },
+  warningText: { color: colors.coral, fontSize: typography.small, lineHeight: 20, fontWeight: "900" },
+  debugPanel: { borderRadius: 16, backgroundColor: "rgba(36,79,55,0.08)", borderWidth: 1, borderColor: "rgba(36,79,55,0.16)", padding: spacing.md, gap: 3, marginTop: spacing.sm },
+  debugTitle: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900", textTransform: "uppercase" },
+  debugText: { color: colors.textMuted, fontSize: typography.caption, lineHeight: 16, fontWeight: "800" }
 });

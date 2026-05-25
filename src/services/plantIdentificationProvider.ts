@@ -20,6 +20,17 @@ export type PlantIdentificationMatch = {
   imageUrl?: string;
 };
 
+export type PlantIdentificationDebug = {
+  providerUsed: "PlantNet" | "local fallback";
+  apiKeyDetected: boolean;
+  imageUriType: "data-uri" | "blob-uri" | "file-uri" | "http-url" | "unknown";
+  requestUrl?: string;
+  responseStatus?: number;
+  candidateCount: number;
+  fallbackTriggered: boolean;
+  fallbackReason?: string;
+};
+
 export type MockPlantIdentificationResult = PlantIdentification & {
   matches: PlantIdentificationMatch[];
   possiblePlantName: string;
@@ -29,6 +40,7 @@ export type MockPlantIdentificationResult = PlantIdentification & {
   wateringNeeds: PlantSpecies["waterNeeds"];
   feedingNotes: string;
   warnings: string[];
+  debug: PlantIdentificationDebug;
 };
 
 export type PlantIdentificationProvider = {
@@ -37,27 +49,30 @@ export type PlantIdentificationProvider = {
   identifyPestOrWeed(photoUri: string): Promise<PlantHealthScan>;
 };
 
-const PLANTNET_IDENTIFY_ENDPOINT = "https://my-api.plantnet.org/v2/identify/all";
+const PLANTNET_IDENTIFY_BASE_ENDPOINT = "https://my-api.plantnet.org/v2/identify";
 const PLANTNET_DISEASE_ENDPOINT = "https://my-api.plantnet.org/v2/diseases/identify";
 const MAX_PLANTNET_RESULTS = 5;
+const MIN_CONFIDENT_SCORE = 0.35;
 
 const plantIdProvider = process.env.EXPO_PUBLIC_PLANT_ID_PROVIDER?.toLowerCase();
 const plantIdApiKey = process.env.EXPO_PUBLIC_PLANT_ID_API_KEY;
-const mockPlantIdEnabled = process.env.EXPO_PUBLIC_ENABLE_MOCK_PLANT_ID !== "false";
+const plantNetProject = process.env.EXPO_PUBLIC_PLANTNET_PROJECT || "all";
+const mockPlantIdEnabled = process.env.EXPO_PUBLIC_ENABLE_MOCK_PLANT_ID === "true";
 
 export const plantIdentificationProvider: PlantIdentificationProvider = {
   async identifyPlant(photoUri) {
     if (plantIdProvider === "plantnet" && plantIdApiKey) {
       try {
         return await identifyWithPlantNet(photoUri, plantIdApiKey);
-      } catch {
+      } catch (error) {
         if (!mockPlantIdEnabled) {
-          throw new Error("Plant identification is temporarily unavailable.");
+          throw new Error(getErrorMessage(error) || "Plant identification is temporarily unavailable.");
         }
+        return mockPlantIdentificationProvider.identifyPlant(photoUri, getFallbackReason(error, "PlantNet identification failed."));
       }
     }
 
-    return mockPlantIdentificationProvider.identifyPlant(photoUri);
+    return mockPlantIdentificationProvider.identifyPlant(photoUri, getProviderFallbackReason());
   },
   async diagnosePlant(photoUri) {
     if (plantIdProvider === "plantnet" && plantIdApiKey) {
@@ -79,8 +94,8 @@ export const plantIdentificationProvider: PlantIdentificationProvider = {
 
 export const stubPlantIdentificationProvider = plantIdentificationProvider;
 
-export const mockPlantIdentificationProvider: PlantIdentificationProvider = {
-  async identifyPlant(photoUri) {
+export const mockPlantIdentificationProvider: PlantIdentificationProvider & { identifyPlant(photoUri: string, fallbackReason?: string): Promise<MockPlantIdentificationResult> } = {
+  async identifyPlant(photoUri: string, fallbackReason: string = "Local demo identification is enabled.") {
     const likelyTomato = photoUri.length % 2 === 0;
     const topMatch: PlantIdentificationMatch = {
       id: likelyTomato ? "mock-match-cherry-tomato" : "mock-match-basil",
@@ -98,7 +113,7 @@ export const mockPlantIdentificationProvider: PlantIdentificationProvider = {
       wateringNeeds: likelyTomato ? "high" : "moderate",
       feedingNotes: likelyTomato ? "Heavy feeder; schedule a feeding reminder after establishment." : "Light feeder; avoid overfertilizing.",
       warnings: [
-        "Mock fallback result. Confirm before adding.",
+        "Using local demo identification. This is not a PlantNet/API result.",
         likelyTomato ? "Support may be needed soon." : "Cold nights can stress tender basil."
       ]
     };
@@ -132,7 +147,15 @@ export const mockPlantIdentificationProvider: PlantIdentificationProvider = {
       lightNeeds: topMatch.lightNeeds,
       wateringNeeds: topMatch.wateringNeeds,
       feedingNotes: topMatch.feedingNotes,
-      warnings: topMatch.warnings
+      warnings: topMatch.warnings,
+      debug: {
+        providerUsed: "local fallback",
+        apiKeyDetected: Boolean(plantIdApiKey),
+        imageUriType: getImageUriType(photoUri),
+        candidateCount: 2,
+        fallbackTriggered: true,
+        fallbackReason
+      }
     };
   },
   async diagnosePlant(photoUri) {
@@ -177,14 +200,17 @@ async function identifyWithPlantNet(photoUri: string, apiKey: string): Promise<M
   const formData = new FormData();
   await appendImagePart(formData, "images", photoUri);
   formData.append("organs", "auto");
+  const project = encodeURIComponent(plantNetProject);
+  const redactedRequestUrl = `${PLANTNET_IDENTIFY_BASE_ENDPOINT}/${project}?api-key=[redacted]&include-related-images=true&nb-results=${MAX_PLANTNET_RESULTS}&lang=en`;
+  const requestUrl = `${PLANTNET_IDENTIFY_BASE_ENDPOINT}/${project}?api-key=${encodeURIComponent(apiKey)}&include-related-images=true&nb-results=${MAX_PLANTNET_RESULTS}&lang=en`;
 
-  const response = await fetch(`${PLANTNET_IDENTIFY_ENDPOINT}?api-key=${encodeURIComponent(apiKey)}&include-related-images=true&nb-results=${MAX_PLANTNET_RESULTS}&lang=en`, {
+  const response = await fetch(requestUrl, {
     method: "POST",
     body: formData
   });
 
   if (!response.ok) {
-    throw new Error("PlantNet identification request failed.");
+    throw new Error(`PlantNet identification request failed with status ${response.status}.`);
   }
 
   const data = (await response.json()) as PlantNetIdentifyResponse;
@@ -210,7 +236,19 @@ async function identifyWithPlantNet(photoUri: string, apiKey: string): Promise<M
     lightNeeds: topMatch.lightNeeds,
     wateringNeeds: topMatch.wateringNeeds,
     feedingNotes: topMatch.feedingNotes,
-    warnings: topMatch.warnings
+    warnings: [
+      ...topMatch.warnings,
+      ...(topMatch.confidence < MIN_CONFIDENT_SCORE ? ["We're not confident. Try another photo or search manually."] : [])
+    ],
+    debug: {
+      providerUsed: "PlantNet",
+      apiKeyDetected: true,
+      imageUriType: getImageUriType(photoUri),
+      requestUrl: redactedRequestUrl,
+      responseStatus: response.status,
+      candidateCount: matches.length,
+      fallbackTriggered: false
+    }
   };
 }
 
@@ -309,4 +347,38 @@ function clampConfidence(value: number) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function getImageUriType(uri: string): PlantIdentificationDebug["imageUriType"] {
+  if (uri.startsWith("data:")) {
+    return "data-uri";
+  }
+  if (uri.startsWith("blob:")) {
+    return "blob-uri";
+  }
+  if (uri.startsWith("file:")) {
+    return "file-uri";
+  }
+  if (uri.startsWith("http://") || uri.startsWith("https://")) {
+    return "http-url";
+  }
+  return "unknown";
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "";
+}
+
+function getFallbackReason(error: unknown, defaultReason: string) {
+  return getErrorMessage(error) || defaultReason;
+}
+
+function getProviderFallbackReason() {
+  if (plantIdProvider !== "plantnet") {
+    return `Plant ID provider is ${plantIdProvider || "not set"}.`;
+  }
+  if (!plantIdApiKey) {
+    return "PlantNet API key was not detected.";
+  }
+  return "Local demo identification is enabled.";
 }

@@ -38,6 +38,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
   const [identification, setIdentification] = useState<MockPlantIdentificationResult | undefined>();
   const [selectedIdentificationMatch, setSelectedIdentificationMatch] = useState<PlantIdentificationMatch | undefined>();
   const [isIdentifying, setIsIdentifying] = useState(false);
+  const [identificationError, setIdentificationError] = useState("");
   const [plantName, setPlantName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndexPlant, setSelectedIndexPlant] = useState<PlantIndexRecord | undefined>();
@@ -65,6 +66,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
     }
 
     setIsIdentifying(true);
+    setIdentificationError("");
     plantIdentificationProvider
       .identifyPlant(selectedPhotoUri)
       .then((result) => {
@@ -72,6 +74,12 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
         setSelectedIdentificationMatch(undefined);
         setPlantName("");
         setNotes(result.warnings.join(" "));
+        setStep("confirm");
+      })
+      .catch((error) => {
+        setIdentification(undefined);
+        setIdentificationError(error instanceof Error ? error.message : "Plant identification is unavailable.");
+        setNotes("Plant identification unavailable. Use manual search.");
         setStep("confirm");
       })
       .finally(() => setIsIdentifying(false));
@@ -95,6 +103,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
     if (!result.canceled && result.assets[0]?.uri) {
       setIdentification(undefined);
       setSelectedIdentificationMatch(undefined);
+      setIdentificationError("");
       onPhotoSelected(result.assets[0].uri);
     }
   }
@@ -226,6 +235,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
           <PlantAutocomplete query={searchQuery} suggestions={suggestions} onChangeQuery={setSearchQuery} onChoose={chooseKnownPlant} onAddCustom={addCustomPlant} />
           <PrimaryButton label="Add manually instead" onPress={searchManually} tone="quiet" />
           {isIdentifying ? <Text style={styles.statusText}>Looking for a possible match...</Text> : null}
+          {identificationError ? <Text style={styles.warningText}>{identificationError} Search manually or try another photo.</Text> : null}
         </View>
       ) : null}
 
@@ -233,9 +243,11 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
         <View>
           {identification ? (
             <GardenCard tone="sky">
-              <Text style={styles.matchLabel}>{identification.provider === "plantnet" ? "PlantNet suggestions" : "Fallback suggestions"}</Text>
+              <Text style={styles.matchLabel}>{identification.debug.providerUsed === "PlantNet" ? "PlantNet suggestions" : "Using local demo identification"}</Text>
               <Text style={styles.cardTitle}>Choose the closest match</Text>
               <Text style={styles.cardText}>These are possible matches, not confirmed identities. Select one, edit the name if needed, then place the plant.</Text>
+              {identification.confidence < 0.35 ? <Text style={styles.warningText}>We're not confident. Try another photo or search manually.</Text> : null}
+              {identification.debug.fallbackTriggered ? <Text style={styles.warningText}>Local demo fallback: {identification.debug.fallbackReason}</Text> : null}
               <View style={styles.matchList}>
                 {identification.matches.map((match) => (
                   <TouchableOpacity
@@ -260,11 +272,12 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
                   </TouchableOpacity>
                 ))}
               </View>
+              {isDevelopmentMode() ? <ProviderDebugPanel debug={identification.debug} /> : null}
             </GardenCard>
           ) : (
             <GardenCard tone="warm">
-              <Text style={styles.matchLabel}>Manual search</Text>
-              <Text style={styles.cardText}>Type the plant name you want to add. Suggestions come from the local searchable plant index.</Text>
+              <Text style={styles.matchLabel}>{identificationError ? "Identification unavailable" : "Manual search"}</Text>
+              <Text style={styles.cardText}>{identificationError ? `${identificationError} Search manually or try another photo.` : "Type the plant name you want to add. Suggestions come from the local searchable plant index."}</Text>
             </GardenCard>
           )}
 
@@ -294,7 +307,7 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
 
           <View style={styles.actions}>
             <PrimaryButton label={identification && !selectedIdentificationMatch ? "Choose a match first" : "Confirm match"} onPress={acceptIdentification} style={styles.actionButton} />
-            <PrimaryButton label="Search manually" onPress={searchManually} tone="quiet" style={styles.actionButton} />
+            <PrimaryButton label="None of these" onPress={searchManually} tone="quiet" style={styles.actionButton} />
           </View>
         </View>
       ) : null}
@@ -413,6 +426,25 @@ function buildPlantIndexNotes(plant: PlantIndexRecord) {
   ].filter(Boolean);
 
   return parts.join(" ");
+}
+
+function ProviderDebugPanel({ debug }: { debug: MockPlantIdentificationResult["debug"] }) {
+  return (
+    <View style={styles.debugPanel}>
+      <Text style={styles.debugTitle}>Development identification status</Text>
+      <Text style={styles.debugText}>Provider used: {debug.providerUsed}</Text>
+      <Text style={styles.debugText}>API key detected: {debug.apiKeyDetected ? "yes" : "no"}</Text>
+      <Text style={styles.debugText}>Image URI type: {debug.imageUriType}</Text>
+      <Text style={styles.debugText}>Response status: {debug.responseStatus ?? "n/a"}</Text>
+      <Text style={styles.debugText}>Candidates returned: {debug.candidateCount}</Text>
+      <Text style={styles.debugText}>Fallback triggered: {debug.fallbackTriggered ? "yes" : "no"}</Text>
+      {debug.fallbackReason ? <Text style={styles.debugText}>Fallback reason: {debug.fallbackReason}</Text> : null}
+    </View>
+  );
+}
+
+function isDevelopmentMode() {
+  return process.env.NODE_ENV !== "production";
 }
 
 const styles = StyleSheet.create({
@@ -540,6 +572,27 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "800",
     lineHeight: 20
+  },
+  debugPanel: {
+    borderRadius: 16,
+    backgroundColor: "rgba(36,79,55,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(36,79,55,0.16)",
+    padding: spacing.md,
+    gap: 3,
+    marginTop: spacing.sm
+  },
+  debugTitle: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase"
+  },
+  debugText: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 16,
+    fontWeight: "800"
   },
   matchList: {
     gap: spacing.sm,
