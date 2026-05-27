@@ -6,9 +6,15 @@
     "orientation": "portrait",
     "scheme": "pattypan",
     "userInterfaceStyle": "light",
+    "description": "Pattypan is a mobile-first garden companion for weather-aware plant care, photo memory, diagnosis, and garden planning.",
     "assetBundlePatterns": [
       "**/*"
     ],
+    "web": {
+      "name": "Pattypan",
+      "shortName": "Pattypan",
+      "themeColor": "#12351F"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gardenapp.mobile"
