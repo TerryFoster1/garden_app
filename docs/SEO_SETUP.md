@@ -103,6 +103,14 @@ In production, verify:
 - `https://pattypan.ca/sitemap.xml`
 - `https://pattypan.ca/robots.txt`
 
+The response body for `sitemap.xml` must begin with:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+```
+
+If it returns the Expo `index.html`, the SPA fallback is intercepting static files. `vercel.json` excludes `sitemap.xml`, `robots.txt`, `favicon.svg`, Expo assets, and static public informational pages from the catch-all app rewrite, and sets explicit content-type headers for sitemap and robots.
+
 ## Remaining Limitations
 
 Pattypan currently ships primarily as an Expo single-page app. The SEO build step now creates lightweight static public pages for the sitemap routes, but the privacy policy, terms, support content, and public Library articles are starter copy only. A future public-content layer should replace these with final legal/support copy and richer indexable Library content.
