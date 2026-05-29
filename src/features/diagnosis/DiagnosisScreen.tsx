@@ -175,7 +175,6 @@ export function DiagnosisScreen({ model, initialPlantId, onBack, onSaveDiagnosis
               <Text style={styles.matchScore}>{Math.round(match.confidence * 100)}%</Text>
             </View>
           ))}
-          {isDevelopmentMode() && identificationDebug ? <ProviderDebugPanel debug={identificationDebug} /> : null}
         </View>
       ) : null}
       {identificationError ? <Text style={styles.warningText}>{identificationError}</Text> : null}

@@ -97,6 +97,11 @@ export async function clearLocalAuth(): Promise<void> {
   await AsyncStorage.removeItem(LOCAL_AUTH_KEY);
 }
 
+export async function signOutLocal(): Promise<void> {
+  const store = await loadStore();
+  await saveStore({ ...store, session: undefined });
+}
+
 function validateAuthInput(email: string, password: string, displayName: string) {
   if (!isValidEmail(email)) {
     return "Enter a valid email address.";

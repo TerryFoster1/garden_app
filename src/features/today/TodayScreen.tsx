@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { CareTask, GardenHomeModel } from "../../domain";
+import { CareTask, CareTaskType, GardenHomeModel, PlantInstance, PlantPhoto, PlantSpecies } from "../../domain";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type TodayScreenProps = {
@@ -12,326 +12,337 @@ type TodayScreenProps = {
   onAddPlant: () => void;
   onCreateGarden: () => void;
   onLoadDemoGarden: () => void;
+  onOpenGarden: () => void;
   onCompleteTask: (taskId: string) => void;
   onSnoozeTask: (taskId: string) => void;
 };
 
-const urgentWeights: Record<CareTask["priority"], number> = {
+type AttentionKind = "water" | "skip-water" | "photo" | "light" | "feed" | "harvest" | "diagnose" | "weather";
+
+type PlantQueueEntry = {
+  plant: PlantInstance;
+  species?: PlantSpecies;
+  photo?: PlantPhoto;
+  reasons: Array<{ kind: AttentionKind; label: string; detail: string; taskId?: string; priority: CareTask["priority"] }>;
+};
+
+const reasonIcons: Record<AttentionKind, keyof typeof Ionicons.glyphMap> = {
+  water: "water-outline",
+  "skip-water": "water",
+  photo: "camera-outline",
+  light: "sunny-outline",
+  feed: "nutrition-outline",
+  harvest: "basket-outline",
+  diagnose: "warning-outline",
+  weather: "partly-sunny-outline"
+};
+
+const priorityWeight: Record<CareTask["priority"], number> = {
   urgent: 0,
   high: 1,
   normal: 2,
   low: 3
 };
 
-const taskIcons: Record<CareTask["type"], keyof typeof Ionicons.glyphMap> = {
-  watering: "water-outline",
-  feeding: "nutrition-outline",
-  pruning: "cut-outline",
-  "pest-check": "bug-outline",
-  "frost-protection": "snow-outline",
-  "wind-protection": "flag-outline",
-  "heavy-rain-protection": "rainy-outline",
-  "heat-stress": "thermometer-outline",
-  shade: "partly-sunny-outline",
-  harvest: "basket-outline",
-  deadheading: "flower-outline",
-  support: "git-branch-outline",
-  "hardening-off": "leaf-outline"
-};
+export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCreateGarden, onLoadDemoGarden, onOpenGarden, onCompleteTask, onSnoozeTask }: TodayScreenProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dismissedPlantIds, setDismissedPlantIds] = useState<string[]>([]);
 
-export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCreateGarden, onLoadDemoGarden, onCompleteTask, onSnoozeTask }: TodayScreenProps) {
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const hasLocation = Boolean(model.user.locationLabel.trim()) && !(model.user.latitude === 0 && model.user.longitude === 0);
-  const hasGardenContent = model.gardens.length > 0 || model.beds.length > 0 || model.plantInstances.length > 0;
-
-  const actionableTasks = useMemo(
-    () =>
-      model.tasks
-        .filter((task) => task.status !== "done" && task.status !== "skipped")
-        .sort((a, b) => urgentWeights[a.priority] - urgentWeights[b.priority])
-        .slice(0, 4),
-    [model.tasks]
-  );
-
-  const conditionSummary = getConditionSummary(model);
-  const urgentCount = actionableTasks.filter((task) => task.priority === "high" || task.priority === "urgent").length;
-  const alertSummary = model.weatherAlerts[0]?.title ?? conditionSummary.alert;
+  const queue = useMemo(() => buildPlantQueue(model).filter((entry) => !dismissedPlantIds.includes(entry.plant.id)), [dismissedPlantIds, model]);
+  const activeEntry = queue[Math.min(activeIndex, Math.max(queue.length - 1, 0))];
   const displayName = model.user.name.trim();
-  const homeTitle = displayName ? `${displayName}'s Garden` : "My Garden";
+  const greeting = `${getGreeting()}${displayName ? `, ${displayName}` : ""}.`;
+
+  function goNext() {
+    setActiveIndex((current) => Math.min(current + 1, Math.max(queue.length - 1, 0)));
+  }
+
+  function goPrevious() {
+    setActiveIndex((current) => Math.max(current - 1, 0));
+  }
+
+  function completePlantAttention(entry: PlantQueueEntry) {
+    entry.reasons.forEach((reason) => {
+      if (reason.taskId) {
+        onCompleteTask(reason.taskId);
+      }
+    });
+    setDismissedPlantIds((current) => [...new Set([...current, entry.plant.id])]);
+    setActiveIndex((current) => Math.min(current, Math.max(queue.length - 2, 0)));
+  }
+
+  function snoozePlantAttention(entry: PlantQueueEntry) {
+    entry.reasons.forEach((reason) => {
+      if (reason.taskId) {
+        onSnoozeTask(reason.taskId);
+      }
+    });
+    setDismissedPlantIds((current) => [...new Set([...current, entry.plant.id])]);
+    setActiveIndex((current) => Math.min(current, Math.max(queue.length - 2, 0)));
+  }
 
   return (
     <View style={styles.screen}>
-      <View style={styles.intro}>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <Text style={styles.pageTitle}>{homeTitle}</Text>
+      <View style={styles.header}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.greeting}>{greeting}</Text>
+          <Text style={styles.title}>{queue.length > 0 ? `${queue.length} plant${queue.length === 1 ? "" : "s"} would like attention today.` : "Your garden is quiet today."}</Text>
+        </View>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add plant" style={styles.addButton} onPress={onAddPlant}>
+          <Ionicons name="add" size={28} color={colors.white} />
+        </TouchableOpacity>
       </View>
 
-      {hasLocation ? (
-        <WeatherHero model={model} conditionSummary={conditionSummary} urgentCount={urgentCount} alertSummary={alertSummary} onPressAlerts={onOpenWeatherAlerts} />
-      ) : (
-        <View style={styles.locationSetup}>
-          <Ionicons name="location-outline" size={28} color={colors.leafDeep} />
-          <Text style={styles.emptyTitle}>Set your location</Text>
-          <Text style={styles.emptyText}>Pattypan needs a city or address before it can use real OpenWeather conditions for frost, rain, heat, wind, and mildew risk.</Text>
-        </View>
-      )}
-
-      {!hasGardenContent ? (
-        <View style={styles.startGardenPanel}>
-          <Text style={styles.sectionEyebrow}>First use</Text>
-          <Text style={styles.sectionTitle}>Start your garden</Text>
-          <Text style={styles.emptyText}>Your garden is empty. Add your first plant, map a bed, or load the sample garden from setup when you want practice data.</Text>
-          <TouchableOpacity accessibilityRole="button" style={styles.startPrimary} onPress={onAddPlant}>
-            <Ionicons name="leaf-outline" size={20} color={colors.white} />
-            <Text style={styles.doneText}>Add Plant</Text>
-          </TouchableOpacity>
-          <View style={styles.startActions}>
-            <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onCreateGarden}>
-              <Text style={styles.secondaryText}>Create Garden</Text>
-            </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onLoadDemoGarden}>
-              <Text style={styles.secondaryText}>Load Demo Garden</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : null}
-
-      {hasGardenContent ? <View style={styles.checklistHeader}>
-        <View>
-          <Text style={styles.sectionEyebrow}>Today's actions</Text>
-          <Text style={styles.sectionTitle}>{actionableTasks.length > 0 ? `${actionableTasks.length} things need attention` : "Nothing urgent"}</Text>
-        </View>
-        {urgentCount > 0 ? (
-          <View style={styles.urgentPill}>
-            <Ionicons name="alert-circle" size={15} color={colors.coral} />
-            <Text style={styles.urgentPillText}>{urgentCount} urgent</Text>
-          </View>
-        ) : null}
-      </View> : null}
-
-      {hasGardenContent ? <View style={styles.checklist}>
-        {actionableTasks.length > 0 ? (
-          actionableTasks.map((task) => {
-            const isExpanded = expandedTaskId === task.id;
-            return (
-              <ActionChecklistItem
-                key={task.id}
-                task={task}
-                isExpanded={isExpanded}
-                onOpenPlant={onOpenPlant}
-                onToggleWhy={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                onComplete={() => onCompleteTask(task.id)}
-                onSnooze={() => onSnoozeTask(task.id)}
-              />
-            );
-          })
-        ) : (
-          <View style={styles.emptyChecklist}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="leaf-outline" size={22} color={colors.leafDeep} />
-            </View>
-            <View style={styles.emptyCopy}>
-              <Text style={styles.emptyTitle}>Your garden can breathe.</Text>
-              <Text style={styles.emptyText}>No immediate care checks are due. Weather rules will surface anything important here.</Text>
-            </View>
-          </View>
-        )}
-      </View> : null}
-
-      {hasGardenContent ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add a plant" style={styles.addPlantCta} onPress={onAddPlant}>
-        <View style={styles.ctaArtwork}>
-          <View style={styles.cameraOrb}>
-            <Ionicons name="camera" size={26} color={colors.white} />
-          </View>
-          <View style={styles.seedlingStem} />
-          <View style={[styles.seedlingLeaf, styles.seedlingLeft]} />
-          <View style={[styles.seedlingLeaf, styles.seedlingRight]} />
-        </View>
-        <View style={styles.ctaCopy}>
-          <Text style={styles.ctaTitle}>Add Plant</Text>
-          <Text style={styles.ctaText}>Scan or search, then place it in your garden.</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={22} color={colors.white} />
-      </TouchableOpacity> : null}
-    </View>
-  );
-}
-
-function WeatherHero({
-  model,
-  conditionSummary,
-  urgentCount,
-  alertSummary,
-  onPressAlerts
-}: {
-  model: GardenHomeModel;
-  conditionSummary: ReturnType<typeof getConditionSummary>;
-  urgentCount: number;
-  alertSummary: string;
-  onPressAlerts: () => void;
-}) {
-  return (
-    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open weather alerts" activeOpacity={0.88} style={styles.hero} onPress={onPressAlerts}>
-      <View style={styles.heroGlow} />
-      <WeatherStateGraphic mood={conditionSummary.mood} />
-
-      <View style={styles.heroTopRow}>
-        <View style={styles.locationBlock}>
-          <Ionicons name="location" size={16} color="rgba(255,255,255,0.9)" />
-          <Text style={styles.locationText}>{model.user.locationLabel}</Text>
-        </View>
-        <Text style={styles.heroTime}>{getDayPart()} check</Text>
-      </View>
-
-      <View style={styles.heroMain}>
-        <Text style={styles.temperatureText}>{model.weather.temperatureC}C</Text>
-        <View style={styles.conditionBlock}>
-          <Text style={styles.conditionTitle}>{conditionSummary.title}</Text>
-          <Text style={styles.conditionText}>{conditionSummary.detail}</Text>
-        </View>
-      </View>
-
-      <View style={styles.weatherMetrics}>
-        <WeatherMetric icon="water-outline" label="Rain" value={`${model.weather.rainfallMm24h}mm`} />
-        <WeatherMetric icon="speedometer-outline" label="Wind" value={`${model.weather.windKph}km/h`} />
-        <WeatherMetric icon="sunny-outline" label="UV" value={`${model.weather.uvIndex}`} />
-      </View>
-
-      <View style={styles.alertStrip}>
-        <Ionicons name={urgentCount > 0 ? "warning-outline" : "leaf-outline"} size={19} color={colors.leafDeep} />
-        <Text style={styles.alertText}>{urgentCount > 0 ? `${urgentCount} urgent check${urgentCount > 1 ? "s" : ""}: ${alertSummary}` : alertSummary}</Text>
+      <TouchableOpacity accessibilityRole="button" activeOpacity={0.86} style={styles.weatherStrip} onPress={onOpenWeatherAlerts}>
+        <Ionicons name={getWeatherIcon(model)} size={22} color={colors.leafDeep} />
+        <Text style={styles.weatherText}>{getWeatherNudge(model)}</Text>
         <Ionicons name="chevron-forward" size={18} color={colors.leafDeep} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function WeatherStateGraphic({ mood }: { mood: WeatherMood }) {
-  return (
-    <View pointerEvents="none" style={styles.weatherGraphic}>
-      <View style={[styles.sunOrb, mood === "cold" && styles.coolSunOrb]} />
-      <View style={styles.cloudMain} />
-      <View style={styles.cloudPuffOne} />
-      <View style={styles.cloudPuffTwo} />
-      {mood === "rain" ? (
-        <View style={styles.rainLines}>
-          <View style={styles.rainLine} />
-          <View style={styles.rainLine} />
-          <View style={styles.rainLine} />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function WeatherMetric({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
-  return (
-    <View style={styles.metric}>
-      <Ionicons name={icon} size={16} color="rgba(255,255,255,0.9)" />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
-  );
-}
-
-function ActionChecklistItem({
-  task,
-  isExpanded,
-  onOpenPlant,
-  onToggleWhy,
-  onComplete,
-  onSnooze
-}: {
-  task: CareTask;
-  isExpanded: boolean;
-  onOpenPlant: (plantId: string) => void;
-  onToggleWhy: () => void;
-  onComplete: () => void;
-  onSnooze: () => void;
-}) {
-  const isUrgent = task.priority === "high" || task.priority === "urgent";
-  const icon = taskIcons[task.type];
-
-  return (
-    <View style={[styles.taskItem, isUrgent && styles.taskItemUrgent]}>
-      <TouchableOpacity accessibilityRole="button" activeOpacity={0.75} style={styles.taskTopRow} onPress={task.plantInstanceId ? () => onOpenPlant(task.plantInstanceId as string) : onToggleWhy}>
-        <View style={[styles.taskIcon, isUrgent && styles.taskIconUrgent]}>
-          <Ionicons name={icon} size={21} color={isUrgent ? colors.coral : colors.leafDeep} />
-        </View>
-        <View style={styles.taskCopy}>
-          <Text style={styles.taskTitle}>{task.title}</Text>
-          <Text style={styles.taskMeta}>{formatTaskContext(task)}</Text>
-        </View>
-        <View style={[styles.statusDot, isUrgent && styles.statusDotUrgent]} />
       </TouchableOpacity>
 
-      {isExpanded ? <Text style={styles.taskReason}>{task.reason}</Text> : null}
+      {activeEntry ? (
+        <View style={styles.queueArea}>
+          <PlantAttentionCard entry={activeEntry} index={Math.min(activeIndex, queue.length - 1)} total={queue.length} onOpenDetails={() => onOpenPlant(activeEntry.plant.id)} onDone={() => completePlantAttention(activeEntry)} onLater={() => snoozePlantAttention(activeEntry)} />
+          <View style={styles.gestureBar}>
+            <TouchableOpacity accessibilityRole="button" disabled={activeIndex === 0} style={[styles.navButton, activeIndex === 0 && styles.navButtonDisabled]} onPress={goPrevious}>
+              <Ionicons name="chevron-back" size={18} color={activeIndex === 0 ? colors.textMuted : colors.leafDeep} />
+              <Text style={[styles.navButtonText, activeIndex === 0 && styles.navButtonTextDisabled]}>Previous</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" style={styles.detailsButton} onPress={() => onOpenPlant(activeEntry.plant.id)}>
+              <Ionicons name="arrow-up" size={18} color={colors.white} />
+              <Text style={styles.detailsButtonText}>Details</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" disabled={activeIndex >= queue.length - 1} style={[styles.navButton, activeIndex >= queue.length - 1 && styles.navButtonDisabled]} onPress={goNext}>
+              <Text style={[styles.navButtonText, activeIndex >= queue.length - 1 && styles.navButtonTextDisabled]}>Next</Text>
+              <Ionicons name="chevron-forward" size={18} color={activeIndex >= queue.length - 1 ? colors.textMuted : colors.leafDeep} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.gestureHint}>Later: swipe between plants, swipe up for details, swipe down when done.</Text>
+        </View>
+      ) : (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyPhoto}>
+            <Ionicons name="leaf" size={76} color={colors.sage} />
+            <View style={styles.emptyGlow} />
+          </View>
+          <Text style={styles.emptyTitle}>{model.plantInstances.length > 0 ? "Everything looks good today." : "Start your plant diary."}</Text>
+          <Text style={styles.emptyText}>
+            {model.plantInstances.length > 0
+              ? "No plants need a look right now. Pattypan will bring one forward when weather, care rhythm, or photo updates matter."
+              : "Add your first plant, take a starting photo, and Pattypan will begin building a daily attention rhythm."}
+          </Text>
+          <TouchableOpacity accessibilityRole="button" style={styles.primaryCta} onPress={onAddPlant}>
+            <Ionicons name="camera-outline" size={20} color={colors.white} />
+            <Text style={styles.primaryCtaText}>Add Plant</Text>
+          </TouchableOpacity>
+          <View style={styles.emptyActions}>
+            <TouchableOpacity accessibilityRole="button" style={styles.secondaryCta} onPress={model.plantInstances.length > 0 ? onOpenGarden : onCreateGarden}>
+              <Text style={styles.secondaryCtaText}>{model.plantInstances.length > 0 ? "Open My Garden" : "Create Garden"}</Text>
+            </TouchableOpacity>
+            {model.plantInstances.length === 0 ? (
+              <TouchableOpacity accessibilityRole="button" style={styles.secondaryCta} onPress={onLoadDemoGarden}>
+                <Text style={styles.secondaryCtaText}>Load Demo Garden</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
 
-      <View style={styles.taskActions}>
-        <TouchableOpacity accessibilityRole="button" style={styles.doneButton} onPress={onComplete}>
+function PlantAttentionCard({ entry, index, total, onOpenDetails, onDone, onLater }: { entry: PlantQueueEntry; index: number; total: number; onOpenDetails: () => void; onDone: () => void; onLater: () => void }) {
+  const primaryReason = entry.reasons[0];
+  const photoUri = entry.photo?.uri;
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.photoFrame}>
+        {photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.plantPhoto} />
+        ) : (
+          <View style={styles.photoFallback}>
+            <Ionicons name="leaf" size={92} color={colors.sage} />
+            <Text style={styles.photoFallbackText}>Take a starting photo</Text>
+          </View>
+        )}
+        <View style={styles.photoShade} />
+        <View style={styles.counterPill}>
+          <Text style={styles.counterText}>{index + 1} / {total}</Text>
+        </View>
+        <View style={styles.needRail}>
+          {entry.reasons.slice(0, 5).map((reason) => (
+            <View key={`${reason.kind}-${reason.taskId ?? reason.label}`} style={styles.needIcon}>
+              <Ionicons name={reasonIcons[reason.kind]} size={19} color={colors.white} />
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.cardCopy}>
+        <Text style={styles.plantName}>{entry.plant.nickname}</Text>
+        <Text style={styles.speciesName}>{entry.species?.commonName ?? "Plant"} - {entry.plant.locationLabel}</Text>
+        <Text style={styles.statusText}>{primaryReason?.label ?? "Quick check"}</Text>
+        <Text style={styles.guidanceText}>{primaryReason?.detail ?? "Take a quick look and add a diary photo if anything changed."}</Text>
+      </View>
+
+      <View style={styles.cardActions}>
+        <TouchableOpacity accessibilityRole="button" style={styles.softAction} onPress={onLater}>
+          <Text style={styles.softActionText}>Later</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" style={styles.photoAction} onPress={onOpenDetails}>
+          <Ionicons name="camera-outline" size={18} color={colors.white} />
+          <Text style={styles.photoActionText}>Take Photo</Text>
+        </TouchableOpacity>
+        <TouchableOpacity accessibilityRole="button" style={styles.doneAction} onPress={onDone}>
           <Ionicons name="checkmark" size={18} color={colors.white} />
-          <Text style={styles.doneText}>Done</Text>
-        </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onSnooze}>
-          <Text style={styles.secondaryText}>Later</Text>
-        </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" style={styles.secondaryButton} onPress={onToggleWhy}>
-          <Text style={styles.secondaryText}>{isExpanded ? "Hide" : "Why"}</Text>
+          <Text style={styles.doneActionText}>Done</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-type WeatherMood = "sun" | "humid" | "rain" | "cold";
+function buildPlantQueue(model: GardenHomeModel): PlantQueueEntry[] {
+  const now = Date.now();
+  const openTasks = model.tasks.filter((task) => task.status !== "done" && task.status !== "skipped");
 
-function getConditionSummary(model: GardenHomeModel): { title: string; detail: string; alert: string; mood: WeatherMood } {
-  if (model.weatherAlerts.some((alert) => alert.type === "heavy-rain" || alert.type === "storm")) {
-    return {
-      title: "Heavy rain expected",
-      detail: "Keep containers draining and pause feeding before the rain arrives.",
-      alert: "Move tender pots and skip fertilizer.",
-      mood: "rain"
-    };
-  }
+  return model.plantInstances
+    .map((plant) => {
+      const species = model.species.find((item) => item.id === plant.speciesId);
+      const plantPhotos = (model.plantPhotos ?? []).filter((photo) => photo.plantInstanceId === plant.id).sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime());
+      const latestPhoto = plant.currentProfilePhotoId ? plantPhotos.find((photo) => photo.id === plant.currentProfilePhotoId) ?? plantPhotos[0] : plantPhotos[0];
+      const plantTasks = openTasks.filter((task) => task.plantInstanceId === plant.id);
+      const reasons = plantTasks.map((task) => taskToAttentionReason(task));
+      const latestPhotoTime = latestPhoto ? new Date(latestPhoto.takenAt).getTime() : 0;
+      const photoAgeDays = latestPhotoTime ? (now - latestPhotoTime) / (24 * 60 * 60 * 1000) : Infinity;
 
-  if (model.weather.frostRisk !== "none") {
-    return {
-      title: "Cold-night watch",
-      detail: "Tender plants may need cover after sunset.",
-      alert: "Check peppers and basil before evening.",
-      mood: "cold"
-    };
-  }
+      if (photoAgeDays >= getPhotoIntervalDays(plant)) {
+        reasons.push({
+          kind: "photo",
+          label: "Photo diary update",
+          detail: "Take a quick progress photo so Pattypan can remember how this plant is changing.",
+          priority: "normal"
+        });
+      }
 
-  if (model.weather.humidityPercent >= 60) {
-    return {
-      title: "Warm and humid today",
-      detail: "Strong growth weather, with mildew-prone plants worth a quick look.",
-      alert: "Good growing conditions with a light disease check.",
-      mood: "humid"
-    };
-  }
+      if (isOutdoorPlant(plant) && model.weather.rainfallMm24h >= 5) {
+        reasons.push({
+          kind: "skip-water",
+          label: "Skip outdoor watering",
+          detail: "Rain has covered the outdoor watering check. A quick visual look is enough.",
+          priority: "normal"
+        });
+      }
 
+      if (isOutdoorPlant(plant) && model.weatherAlerts.length > 0) {
+        const alert = model.weatherAlerts[0];
+        reasons.push({
+          kind: "weather",
+          label: alert.title,
+          detail: alert.summary,
+          priority: alert.severity === "urgent" ? "urgent" : alert.severity === "warning" ? "high" : "normal"
+        });
+      }
+
+      return {
+        plant,
+        species,
+        photo: latestPhoto,
+        reasons: dedupeReasons(reasons).sort((a, b) => priorityWeight[a.priority] - priorityWeight[b.priority])
+      };
+    })
+    .filter((entry) => entry.reasons.length > 0)
+    .sort((a, b) => priorityWeight[a.reasons[0].priority] - priorityWeight[b.reasons[0].priority]);
+}
+
+function taskToAttentionReason(task: CareTask): PlantQueueEntry["reasons"][number] {
   return {
-    title: "Good growing conditions",
-    detail: "A calm day for quick checks and light care.",
-    alert: "Nothing severe in the garden forecast.",
-    mood: "sun"
+    kind: taskTypeToAttentionKind(task.type),
+    label: task.title,
+    detail: task.reason,
+    taskId: task.id,
+    priority: task.priority
   };
 }
 
-function formatTaskContext(task: CareTask) {
-  if (task.priority === "urgent") {
-    return "Needs attention now";
+function taskTypeToAttentionKind(type: CareTaskType): AttentionKind {
+  if (type === "watering") {
+    return "water";
   }
-  if (task.priority === "high") {
-    return "Important today";
+  if (type === "feeding") {
+    return "feed";
   }
-  if (task.status === "needs-confirmation") {
-    return "Confirm before scheduling";
+  if (type === "harvest") {
+    return "harvest";
   }
-  return "Quick check";
+  if (type === "shade" || type === "heat-stress") {
+    return "light";
+  }
+  if (type === "pest-check") {
+    return "diagnose";
+  }
+  if (type === "frost-protection" || type === "wind-protection" || type === "heavy-rain-protection") {
+    return "weather";
+  }
+  return "photo";
+}
+
+function getPhotoIntervalDays(plant: PlantInstance) {
+  if (plant.healthStatus === "watch" || plant.healthStatus === "stressed") {
+    return 1;
+  }
+  if (plant.stage === "seed" || plant.stage === "seedling" || plant.stage === "young") {
+    return 3;
+  }
+  return 7;
+}
+
+function dedupeReasons(reasons: PlantQueueEntry["reasons"]) {
+  const seen = new Set<string>();
+  return reasons.filter((reason) => {
+    const key = reason.taskId ?? `${reason.kind}:${reason.label}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function isOutdoorPlant(plant: PlantInstance) {
+  return plant.locationType === "in-ground" || plant.locationType === "raised-bed" || plant.locationType === "container" || plant.locationType === "greenhouse";
+}
+
+function getWeatherIcon(model: GardenHomeModel): keyof typeof Ionicons.glyphMap {
+  if (model.weatherAlerts.some((alert) => alert.type === "frost")) {
+    return "snow-outline";
+  }
+  if (model.weatherAlerts.some((alert) => alert.type === "wind")) {
+    return "flag-outline";
+  }
+  if (model.weather.rainfallMm24h >= 5) {
+    return "rainy-outline";
+  }
+  if (model.weather.temperatureC >= 28) {
+    return "thermometer-outline";
+  }
+  return "partly-sunny-outline";
+}
+
+function getWeatherNudge(model: GardenHomeModel) {
+  if (!model.user.locationLabel.trim()) {
+    return "Set your location for weather-aware plant check-ins.";
+  }
+  if (model.weatherAlerts[0]) {
+    return model.weatherAlerts[0].summary;
+  }
+  if (model.weather.rainfallMm24h >= 5) {
+    return "Rain today means outdoor plants may only need a quick look.";
+  }
+  if (model.weather.temperatureC >= 28) {
+    return "Warm weather today. Watch thirsty containers and young plants.";
+  }
+  return `${model.weather.temperatureC}C in ${model.weather.locationLabel || model.user.locationLabel}. A calm day for quick plant check-ins.`;
 }
 
 function getGreeting() {
@@ -345,467 +356,54 @@ function getGreeting() {
   return "Good evening";
 }
 
-function getDayPart() {
-  const hour = new Date().getHours();
-  if (hour < 11) {
-    return "Morning";
-  }
-  if (hour < 17) {
-    return "Afternoon";
-  }
-  return "Evening";
-}
-
 const styles = StyleSheet.create({
-  screen: {
-    gap: spacing.lg
-  },
-  intro: {
-    paddingTop: spacing.xs,
-    gap: 2
-  },
-  greeting: {
-    color: colors.textMuted,
-    fontSize: typography.body,
-    fontWeight: "800"
-  },
-  pageTitle: {
-    color: colors.leafDeep,
-    fontSize: 44,
-    fontWeight: "900",
-    lineHeight: 48
-  },
-  hero: {
-    minHeight: 292,
-    borderRadius: 34,
-    padding: spacing.lg,
-    overflow: "hidden",
-    justifyContent: "space-between",
-    backgroundColor: colors.leafDeep,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 10
-  },
-  heroGlow: {
-    position: "absolute",
-    right: -92,
-    top: -92,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "rgba(244,200,95,0.32)"
-  },
-  weatherGraphic: {
-    position: "absolute",
-    right: 22,
-    top: 58,
-    width: 145,
-    height: 122
-  },
-  sunOrb: {
-    position: "absolute",
-    right: 18,
-    top: 0,
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: "#f7c65a"
-  },
-  coolSunOrb: {
-    backgroundColor: "#d7e7ef"
-  },
-  cloudMain: {
-    position: "absolute",
-    right: 10,
-    top: 58,
-    width: 112,
-    height: 40,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.76)"
-  },
-  cloudPuffOne: {
-    position: "absolute",
-    right: 74,
-    top: 42,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255,255,255,0.82)"
-  },
-  cloudPuffTwo: {
-    position: "absolute",
-    right: 36,
-    top: 34,
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: "rgba(255,255,255,0.8)"
-  },
-  rainLines: {
-    position: "absolute",
-    right: 35,
-    top: 100,
-    flexDirection: "row",
-    gap: spacing.sm
-  },
-  rainLine: {
-    width: 5,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: "rgba(219,234,240,0.92)",
-    transform: [{ rotate: "14deg" }]
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md
-  },
-  locationBlock: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs
-  },
-  locationText: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  heroTime: {
-    color: "rgba(255,255,255,0.72)",
-    fontSize: typography.caption,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  heroMain: {
-    marginTop: spacing.xl,
-    paddingTop: spacing.xl,
-    maxWidth: "70%"
-  },
-  temperatureText: {
-    color: colors.white,
-    fontSize: 66,
-    fontWeight: "900",
-    lineHeight: 70
-  },
-  conditionBlock: {
-    gap: spacing.xs
-  },
-  conditionTitle: {
-    color: colors.white,
-    fontSize: typography.title,
-    fontWeight: "900",
-    lineHeight: 31
-  },
-  conditionText: {
-    color: "rgba(255,255,255,0.82)",
-    fontSize: typography.small,
-    lineHeight: 20,
-    fontWeight: "700"
-  },
-  weatherMetrics: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.lg
-  },
-  metric: {
-    flex: 1,
-    minHeight: 58,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.13)",
-    padding: spacing.sm,
-    justifyContent: "center"
-  },
-  metricLabel: {
-    color: "rgba(255,255,255,0.68)",
-    fontSize: typography.caption,
-    fontWeight: "800",
-    marginTop: 2
-  },
-  metricValue: {
-    color: colors.white,
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  alertStrip: {
-    minHeight: 48,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.md,
-    backgroundColor: "rgba(255,253,248,0.9)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginTop: spacing.md
-  },
-  alertText: {
-    flex: 1,
-    color: colors.leafDeep,
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  checklistHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: spacing.md
-  },
-  sectionEyebrow: {
-    color: colors.leaf,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    textTransform: "uppercase"
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 25
-  },
-  urgentPill: {
-    minHeight: 32,
-    borderRadius: radii.pill,
-    backgroundColor: "#fff1ea",
-    borderWidth: 1,
-    borderColor: "#efc3b6",
-    paddingHorizontal: spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs
-  },
-  urgentPillText: {
-    color: colors.coral,
-    fontSize: typography.caption,
-    fontWeight: "900"
-  },
-  checklist: {
-    gap: spacing.sm
-  },
-  taskItem: {
-    borderRadius: 24,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm
-  },
-  taskItemUrgent: {
-    borderColor: "#efc3b6",
-    backgroundColor: "#fff7f2"
-  },
-  taskTopRow: {
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  taskIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#eef6e9",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  taskIconUrgent: {
-    backgroundColor: "#ffe7dc"
-  },
-  taskCopy: {
-    flex: 1
-  },
-  taskTitle: {
-    color: colors.text,
-    fontSize: typography.body,
-    fontWeight: "900",
-    lineHeight: 21
-  },
-  taskMeta: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    marginTop: 4
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.sage
-  },
-  statusDotUrgent: {
-    backgroundColor: colors.coral
-  },
-  taskReason: {
-    color: colors.textMuted,
-    fontSize: typography.small,
-    lineHeight: 20,
-    paddingLeft: 58
-  },
-  taskActions: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingLeft: 58
-  },
-  doneButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: radii.pill,
-    backgroundColor: colors.leafDeep,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.xs
-  },
-  doneText: {
-    color: colors.white,
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  secondaryButton: {
-    minWidth: 70,
-    minHeight: 44,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surfaceWarm,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md
-  },
-  secondaryText: {
-    color: colors.leafDeep,
-    fontSize: typography.small,
-    fontWeight: "900"
-  },
-  emptyChecklist: {
-    borderRadius: 24,
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#eef6e9",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  emptyCopy: {
-    flex: 1
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: typography.body,
-    fontWeight: "900"
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: typography.small,
-    lineHeight: 19,
-    fontWeight: "700",
-    marginTop: 2
-  },
-  locationSetup: {
-    borderRadius: 28,
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm
-  },
-  startGardenPanel: {
-    borderRadius: 30,
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.md
-  },
-  startPrimary: {
-    minHeight: 50,
-    borderRadius: radii.pill,
-    backgroundColor: colors.leafDeep,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm
-  },
-  startActions: {
-    flexDirection: "row",
-    gap: spacing.sm
-  },
-  addPlantCta: {
-    minHeight: 112,
-    borderRadius: 30,
-    backgroundColor: colors.leafDeep,
-    padding: spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8
-  },
-  ctaArtwork: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden"
-  },
-  cameraOrb: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.leaf,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  seedlingStem: {
-    position: "absolute",
-    bottom: 8,
-    width: 4,
-    height: 26,
-    borderRadius: 2,
-    backgroundColor: colors.sage
-  },
-  seedlingLeaf: {
-    position: "absolute",
-    bottom: 25,
-    width: 22,
-    height: 14,
-    borderRadius: 16,
-    backgroundColor: colors.sage
-  },
-  seedlingLeft: {
-    left: 16,
-    transform: [{ rotate: "-28deg" }]
-  },
-  seedlingRight: {
-    right: 16,
-    transform: [{ rotate: "28deg" }]
-  },
-  ctaCopy: {
-    flex: 1
-  },
-  ctaTitle: {
-    color: colors.white,
-    fontSize: typography.section,
-    fontWeight: "900"
-  },
-  ctaText: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: typography.small,
-    lineHeight: 19,
-    fontWeight: "800",
-    marginTop: spacing.xs
-  }
+  screen: { gap: spacing.lg },
+  header: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  headerCopy: { flex: 1, gap: spacing.xs },
+  greeting: { color: colors.textMuted, fontSize: typography.body, fontWeight: "800" },
+  title: { color: colors.leafDeep, fontSize: 34, fontWeight: "900", lineHeight: 38 },
+  addButton: { width: 54, height: 54, borderRadius: 27, backgroundColor: colors.leafDeep, alignItems: "center", justifyContent: "center" },
+  weatherStrip: { minHeight: 54, borderRadius: radii.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  weatherText: { flex: 1, color: colors.text, fontSize: typography.small, lineHeight: 19, fontWeight: "800" },
+  queueArea: { gap: spacing.md },
+  card: { borderRadius: 34, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden", shadowColor: colors.shadow, shadowOpacity: 0.16, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 9 },
+  photoFrame: { height: 410, backgroundColor: colors.leafDeep, overflow: "hidden" },
+  plantPhoto: { width: "100%", height: "100%" },
+  photoFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#143b25", gap: spacing.md },
+  photoFallbackText: { color: "rgba(255,253,243,0.86)", fontSize: typography.body, fontWeight: "900" },
+  photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 160, backgroundColor: "rgba(5,18,10,0.38)" },
+  counterPill: { position: "absolute", top: spacing.md, left: spacing.md, minHeight: 32, borderRadius: radii.pill, backgroundColor: "rgba(255,253,243,0.88)", paddingHorizontal: spacing.md, justifyContent: "center" },
+  counterText: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900" },
+  needRail: { position: "absolute", right: spacing.md, top: spacing.md, gap: spacing.sm },
+  needIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(18,53,31,0.78)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.26)" },
+  cardCopy: { padding: spacing.lg, gap: spacing.xs },
+  plantName: { color: colors.leafDeep, fontSize: 32, fontWeight: "900", lineHeight: 36 },
+  speciesName: { color: colors.textMuted, fontSize: typography.small, fontWeight: "800" },
+  statusText: { color: colors.text, fontSize: typography.section, fontWeight: "900", marginTop: spacing.sm },
+  guidanceText: { color: colors.textMuted, fontSize: typography.small, lineHeight: 20, fontWeight: "700" },
+  cardActions: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.lg },
+  softAction: { minHeight: 48, borderRadius: radii.pill, backgroundColor: colors.surfaceWarm, paddingHorizontal: spacing.md, alignItems: "center", justifyContent: "center" },
+  softActionText: { color: colors.leafDeep, fontSize: typography.small, fontWeight: "900" },
+  photoAction: { flex: 1.2, minHeight: 48, borderRadius: radii.pill, backgroundColor: colors.leafDeep, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs },
+  photoActionText: { color: colors.white, fontSize: typography.small, fontWeight: "900" },
+  doneAction: { flex: 1, minHeight: 48, borderRadius: radii.pill, backgroundColor: colors.leaf, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs },
+  doneActionText: { color: colors.white, fontSize: typography.small, fontWeight: "900" },
+  gestureBar: { flexDirection: "row", gap: spacing.sm },
+  navButton: { flex: 1, minHeight: 46, borderRadius: radii.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs },
+  navButtonDisabled: { opacity: 0.45 },
+  navButtonText: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900" },
+  navButtonTextDisabled: { color: colors.textMuted },
+  detailsButton: { flex: 1, minHeight: 46, borderRadius: radii.pill, backgroundColor: colors.leafDeep, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xs },
+  detailsButtonText: { color: colors.white, fontSize: typography.caption, fontWeight: "900" },
+  gestureHint: { color: colors.textMuted, fontSize: typography.caption, lineHeight: 17, textAlign: "center", fontWeight: "700" },
+  emptyState: { borderRadius: 34, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, alignItems: "center", gap: spacing.md },
+  emptyPhoto: { width: "100%", height: 260, borderRadius: 28, backgroundColor: colors.leafDeep, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  emptyGlow: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(244,200,95,0.18)", right: -80, top: -70 },
+  emptyTitle: { color: colors.leafDeep, fontSize: typography.title, fontWeight: "900", textAlign: "center" },
+  emptyText: { color: colors.textMuted, fontSize: typography.small, lineHeight: 20, fontWeight: "800", textAlign: "center" },
+  primaryCta: { alignSelf: "stretch", minHeight: 52, borderRadius: radii.pill, backgroundColor: colors.leafDeep, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
+  primaryCtaText: { color: colors.white, fontSize: typography.body, fontWeight: "900" },
+  emptyActions: { alignSelf: "stretch", flexDirection: "row", gap: spacing.sm },
+  secondaryCta: { flex: 1, minHeight: 48, borderRadius: radii.pill, backgroundColor: colors.surfaceWarm, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.sm },
+  secondaryCtaText: { color: colors.leafDeep, fontSize: typography.small, fontWeight: "900", textAlign: "center" }
 });

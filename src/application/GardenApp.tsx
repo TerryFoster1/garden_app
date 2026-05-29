@@ -23,7 +23,7 @@ import { WeatherAlertsScreen } from "../features/weather/WeatherAlertsScreen";
 import { AddPlantDraft } from "../features/add-plant/types";
 import { CareTask, GardenHomeModel, NotificationPreference, PlantInstance, PlantPhoto, PlantSpecies, SunBand, WeatherAlert } from "../domain";
 import { clearAllLocalAppData, loadPersistedGardenModel, persistGardenModel } from "../services/localPersistence";
-import { loadLocalSession, LocalSession } from "../services/localAuth";
+import { loadLocalSession, LocalSession, signOutLocal } from "../services/localAuth";
 import { getBridgeEntitlements, parseEntitlementConfig } from "../services/entitlements/entitlementService";
 import { getSupabaseBridgeStatus } from "../services/supabase";
 import { geocodeLocation, weatherProvider } from "../services/weather/weatherProvider";
@@ -389,6 +389,20 @@ export function GardenApp() {
     void clearAllLocalAppData().finally(() => {
       setLocalSession(null);
       setModel(mockGardenRepository.getEmptyModel());
+      setSelectedPhotoUri(null);
+      setLastAddedPlantId(null);
+      setSelectedPlantId(null);
+      setSelectedReferencePlant(null);
+      setSelectedPlacement(null);
+      setInitialAddPlacement(null);
+      setActiveTab("home");
+      setOverlay("landing");
+    });
+  }
+
+  function handleSignOut() {
+    void signOutLocal().finally(() => {
+      setLocalSession(null);
       setSelectedPhotoUri(null);
       setLastAddedPlantId(null);
       setSelectedPlantId(null);
@@ -899,6 +913,7 @@ export function GardenApp() {
           onAddPlant={() => handleOpenAddPlant(null)}
           onCreateGarden={() => setOverlay("gardenSetup")}
           onLoadDemoGarden={handleLoadDemoGarden}
+          onOpenGarden={() => setActiveTab("garden")}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
         />
@@ -929,6 +944,7 @@ export function GardenApp() {
         onOpenPremium={() => setOverlay("premium")}
         onUpdateProfile={handleUpdateProfile}
         onResetLocalData={handleResetLocalAppData}
+        onSignOut={handleSignOut}
       />
     );
   }
@@ -976,24 +992,10 @@ export function GardenApp() {
           <Text style={styles.desktopName}>Pattypan</Text>
           <Text style={styles.desktopTagline}>Your Heirloom Secret</Text>
           <Text style={styles.desktopCopy}>Pattypan.ca works in the browser, but the garden companion is best on your phone: camera capture, outdoor checks, notifications, and one-handed task flow.</Text>
-          <View style={styles.qrCard}>
-            <QrPlaceholder />
-            <View style={styles.qrCopy}>
-              <Text style={styles.qrTitle}>Open on mobile</Text>
-              <Text style={styles.qrText}>QR and app store links are placeholders until native releases are ready.</Text>
-            </View>
+          <View style={styles.desktopNoteCard}>
+            <Ionicons name="phone-portrait-outline" size={24} color={colors.leafDeep} />
+            <Text style={styles.desktopNoteText}>Best on mobile for photos, reminders, and quick plant check-ins.</Text>
           </View>
-          <View style={styles.storeRow}>
-            <View style={styles.storePill}>
-              <Ionicons name="logo-apple" size={18} color={colors.leafDeep} />
-              <Text style={styles.storeText}>App Store soon</Text>
-            </View>
-            <View style={styles.storePill}>
-              <Ionicons name="logo-google-playstore" size={18} color={colors.leafDeep} />
-              <Text style={styles.storeText}>Google Play soon</Text>
-            </View>
-          </View>
-          <Text style={styles.browserText}>Continue in browser</Text>
         </View>
         <View style={styles.phoneFrame}>{appContent}</View>
       </View>
@@ -1228,6 +1230,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md
+  },
+  desktopNoteCard: {
+    maxWidth: 430,
+    borderRadius: 28,
+    backgroundColor: "rgba(255,253,248,0.92)",
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md
+  },
+  desktopNoteText: {
+    flex: 1,
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    lineHeight: 20,
+    fontWeight: "900"
   },
   qrGrid: {
     width: 92,

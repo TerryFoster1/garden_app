@@ -272,7 +272,6 @@ export function AddPlantFlowScreen({ model, selectedPhotoUri, initialPlacement, 
                   </TouchableOpacity>
                 ))}
               </View>
-              {isDevelopmentMode() ? <ProviderDebugPanel debug={identification.debug} /> : null}
             </GardenCard>
           ) : (
             <GardenCard tone="warm">
