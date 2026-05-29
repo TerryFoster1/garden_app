@@ -8,6 +8,7 @@ import { ScreenHeader } from "../../components/ScreenHeader";
 import { CareTask, GardenBed, GardenHomeModel, PlantInstance, PlantPhoto, PlantSpecies } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
 import { getDaysUntilHarvest, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
+import { getPlantCharacterAsset, getPlantCharacterCaption } from "../../services/plantCharacterAssets";
 import { getLatestPlantPhoto, getPlantPhotos } from "../../services/plantPhotos";
 import { getPruningGuidance, getPruningTermsInText, hasRecentPruningActivity, pruningTermExplainers, PruningGuidance } from "../../services/pruningGuidance";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
@@ -43,6 +44,8 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
   });
 
   const species = model.species.find((item) => item.id === plant.speciesId);
+  const fallbackCharacter = getPlantCharacterAsset(plant, species);
+  const fallbackCaption = getPlantCharacterCaption(plant);
   const bed = plant.bedId ? model.beds.find((item) => item.id === plant.bedId) : undefined;
   const tasks = model.tasks.filter((task) => task.plantInstanceId === plant.id && task.status !== "done" && task.status !== "skipped");
   const knowledge = getPlantKnowledge(species, plant.nickname);
@@ -109,8 +112,9 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
         latestPhoto={latestPhoto}
         status={status}
         commonName={knowledge.commonName}
-        visual={knowledge.visual}
         daysUntilHarvest={daysUntilHarvest}
+        fallbackCharacter={fallbackCharacter}
+        fallbackCaption={fallbackCaption}
       />
 
       <QuickActions
@@ -222,8 +226,9 @@ function PlantHero({
   latestPhoto,
   status,
   commonName,
-  visual,
-  daysUntilHarvest
+  daysUntilHarvest,
+  fallbackCharacter,
+  fallbackCaption
 }: {
   plant: PlantInstance;
   species?: PlantSpecies;
@@ -232,8 +237,9 @@ function PlantHero({
   latestPhoto?: PlantPhoto;
   status: ReturnType<typeof getPlantStatus>;
   commonName: string;
-  visual: string;
   daysUntilHarvest?: number;
+  fallbackCharacter: ReturnType<typeof getPlantCharacterAsset>;
+  fallbackCaption: string;
 }) {
   return (
     <View style={styles.hero}>
@@ -241,11 +247,10 @@ function PlantHero({
         <Image source={{ uri: latestPhoto.uri }} resizeMode="cover" style={styles.heroImage} />
       ) : (
         <View style={styles.heroFallback}>
-          <View style={styles.heroFallbackOrb}>
-            <Ionicons name="leaf" size={58} color={colors.leafDeep} />
+          <Image source={fallbackCharacter} resizeMode="cover" style={styles.heroCharacterImage} />
+          <View style={styles.heroFallbackCaption}>
+            <Text style={styles.heroFallbackText}>{fallbackCaption}</Text>
           </View>
-          <Text style={styles.heroFallbackText}>Add a photo to make this plant recognizable.</Text>
-          <Text style={styles.heroGlyph}>{visual}</Text>
         </View>
       )}
       <View style={styles.heroOverlay} />
@@ -589,28 +594,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#dfead6",
-    gap: spacing.md
+    backgroundColor: "#dfead6"
   },
-  heroFallbackOrb: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: "rgba(255,253,248,0.82)",
-    alignItems: "center",
-    justifyContent: "center"
+  heroCharacterImage: {
+    width: "100%",
+    height: "100%"
+  },
+  heroFallbackCaption: {
+    position: "absolute",
+    left: spacing.lg,
+    bottom: spacing.lg,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(18,53,31,0.82)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm
   },
   heroFallbackText: {
-    maxWidth: 220,
-    color: colors.leafDeep,
+    color: "rgba(255,253,243,0.94)",
     fontSize: typography.small,
-    lineHeight: 20,
-    fontWeight: "900",
-    textAlign: "center"
-  },
-  heroGlyph: {
-    color: "rgba(36,79,55,0.18)",
-    fontSize: 46,
     fontWeight: "900"
   },
   heroOverlay: {

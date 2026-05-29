@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { CareTask, CareTaskType, GardenHomeModel, PlantInstance, PlantPhoto, PlantSpecies } from "../../domain";
+import { getPlantCharacterAsset, getPlantCharacterCaption } from "../../services/plantCharacterAssets";
 import { getPruningGuidance, hasRecentPruningActivity } from "../../services/pruningGuidance";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
@@ -160,6 +161,7 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
 function PlantAttentionCard({ entry, index, total, onOpenDetails, onDone, onLater }: { entry: PlantQueueEntry; index: number; total: number; onOpenDetails: () => void; onDone: () => void; onLater: () => void }) {
   const primaryReason = entry.reasons[0];
   const photoUri = entry.photo?.uri;
+  const fallbackCharacter = getPlantCharacterAsset(entry.plant, entry.species);
 
   return (
     <View style={styles.card}>
@@ -168,8 +170,10 @@ function PlantAttentionCard({ entry, index, total, onOpenDetails, onDone, onLate
           <Image source={{ uri: photoUri }} style={styles.plantPhoto} />
         ) : (
           <View style={styles.photoFallback}>
-            <Ionicons name="leaf" size={92} color={colors.sage} />
-            <Text style={styles.photoFallbackText}>Take a starting photo</Text>
+            <Image source={fallbackCharacter} resizeMode="cover" style={styles.characterImage} />
+            <View style={styles.characterCaption}>
+              <Text style={styles.photoFallbackText}>{getPlantCharacterCaption(entry.plant)}</Text>
+            </View>
           </View>
         )}
         <View style={styles.photoShade} />
@@ -389,8 +393,10 @@ const styles = StyleSheet.create({
   card: { borderRadius: 34, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden", shadowColor: colors.shadow, shadowOpacity: 0.16, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 9 },
   photoFrame: { height: 410, backgroundColor: colors.leafDeep, overflow: "hidden" },
   plantPhoto: { width: "100%", height: "100%" },
-  photoFallback: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#143b25", gap: spacing.md },
-  photoFallbackText: { color: "rgba(255,253,243,0.86)", fontSize: typography.body, fontWeight: "900" },
+  photoFallback: { flex: 1, backgroundColor: "#dfead6" },
+  characterImage: { width: "100%", height: "100%" },
+  characterCaption: { position: "absolute", left: spacing.lg, bottom: spacing.lg, borderRadius: radii.pill, backgroundColor: "rgba(18,53,31,0.82)", paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  photoFallbackText: { color: "rgba(255,253,243,0.94)", fontSize: typography.body, fontWeight: "900" },
   photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 160, backgroundColor: "rgba(5,18,10,0.38)" },
   counterPill: { position: "absolute", top: spacing.md, left: spacing.md, minHeight: 32, borderRadius: radii.pill, backgroundColor: "rgba(255,253,243,0.88)", paddingHorizontal: spacing.md, justifyContent: "center" },
   counterText: { color: colors.leafDeep, fontSize: typography.caption, fontWeight: "900" },

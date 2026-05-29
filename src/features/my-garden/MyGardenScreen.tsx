@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { GardenBed, GardenHomeModel, PlantInstance, PlantSpecies } from "../../domain";
+import { GardenBed, GardenHomeModel, PlantInstance } from "../../domain";
 import { getPlantKnowledge } from "../../data/plantKnowledge";
+import { getPlantCharacterAsset, getPlantCharacterCaption } from "../../services/plantCharacterAssets";
 import { getLatestPlantPhoto } from "../../services/plantPhotos";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 import { GardenPlacement } from "./LocationManagementScreen";
@@ -53,7 +54,7 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
       {activeView === "outdoor" ? (
         <View style={styles.list}>
           {outdoorBeds.map((bed, index) => (
-            <BedOverviewCard key={bed.id} bed={bed} plants={plantsByBed[bed.id] ?? []} species={model.species} index={index} onPress={() => onOpenGardenSetup(toPlacement(bed))} />
+            <BedOverviewCard key={bed.id} bed={bed} plants={plantsByBed[bed.id] ?? []} model={model} index={index} onPress={() => onOpenGardenSetup(toPlacement(bed))} />
           ))}
           {outdoorBeds.length === 0 ? (
             <View style={styles.emptyState}>
@@ -81,11 +82,11 @@ export function MyGardenScreen({ model, onAddPlant, onOpenGardenSetup, onOpenPla
   );
 }
 
-function BedOverviewCard({ bed, plants, species, index, onPress }: { bed: GardenBed; plants: PlantInstance[]; species: PlantSpecies[]; index: number; onPress: () => void }) {
+function BedOverviewCard({ bed, plants, model, index, onPress }: { bed: GardenBed; plants: PlantInstance[]; model: GardenHomeModel; index: number; onPress: () => void }) {
   const status = getBedStatus(index, plants);
   const plantNames = plants
     .slice(0, 4)
-    .map((plant) => getPlantKnowledge(species.find((item) => item.id === plant.speciesId), plant.nickname).commonName)
+    .map((plant) => getPlantKnowledge(model.species.find((item) => item.id === plant.speciesId), plant.nickname).commonName)
     .filter(Boolean);
   const visibleList = plantNames.length > 0 ? plantNames.join(", ") : "No plants yet";
   const overflowCount = Math.max(0, plants.length - 4);
@@ -110,9 +111,15 @@ function BedOverviewCard({ bed, plants, species, index, onPress }: { bed: Garden
 
       <View style={styles.bedBottomRow}>
         <View style={styles.tinyPreview}>
-          {plants.slice(0, 5).map((plant, plantIndex) => (
-            <View key={plant.id} style={[styles.tinyPlantDot, plant.healthStatus === "watch" && styles.tinyPlantDotWatch, { marginLeft: plantIndex === 0 ? 0 : -5 }]} />
-          ))}
+          {plants.slice(0, 5).map((plant, plantIndex) => {
+            const photo = getLatestPlantPhoto(model, plant);
+            const species = model.species.find((item) => item.id === plant.speciesId);
+            return (
+              <View key={plant.id} style={[styles.tinyPlantDot, plant.healthStatus === "watch" && styles.tinyPlantDotWatch, { marginLeft: plantIndex === 0 ? 0 : -5 }]}>
+                <Image source={photo ? { uri: photo.uri } : getPlantCharacterAsset(plant, species)} style={styles.tinyPlantImage} />
+              </View>
+            );
+          })}
         </View>
         <Text style={styles.openText}>Open bed</Text>
         <Ionicons name="chevron-forward" size={19} color={colors.textMuted} />
@@ -125,6 +132,7 @@ function IndoorPlantCard({ plant, model, onPress }: { plant: PlantInstance; mode
   const species = model.species.find((item) => item.id === plant.speciesId);
   const knowledge = getPlantKnowledge(species, plant.nickname);
   const photo = getLatestPlantPhoto(model, plant);
+  const fallbackCharacter = getPlantCharacterAsset(plant, species);
   const statusColor = plant.healthStatus === "watch" || plant.healthStatus === "stressed" ? colors.coral : colors.leaf;
 
   return (
@@ -133,7 +141,10 @@ function IndoorPlantCard({ plant, model, onPress }: { plant: PlantInstance; mode
         <Image source={{ uri: photo.uri }} style={styles.plantPhoto} />
       ) : (
         <View style={styles.plantFallback}>
-          <Text style={styles.plantFallbackText}>{knowledge.visual}</Text>
+          <Image source={fallbackCharacter} resizeMode="cover" style={styles.plantFallbackImage} />
+          <View style={styles.plantFallbackCaption}>
+            <Text style={styles.plantFallbackText}>{getPlantCharacterCaption(plant)}</Text>
+          </View>
         </View>
       )}
       <View style={styles.cardCopy}>
@@ -337,7 +348,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.leaf,
     borderWidth: 2,
-    borderColor: colors.surface
+    borderColor: colors.surface,
+    overflow: "hidden"
+  },
+  tinyPlantImage: {
+    width: "100%",
+    height: "100%"
   },
   tinyPlantDotWatch: {
     backgroundColor: colors.coral
@@ -369,14 +385,30 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 24,
-    backgroundColor: colors.sage,
+    backgroundColor: "#dfead6",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    overflow: "hidden"
+  },
+  plantFallbackImage: {
+    width: "100%",
+    height: "100%"
+  },
+  plantFallbackCaption: {
+    position: "absolute",
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(18,53,31,0.78)",
+    paddingVertical: 3,
+    paddingHorizontal: 5
   },
   plantFallbackText: {
     color: colors.white,
-    fontSize: typography.title,
-    fontWeight: "900"
+    fontSize: 8,
+    fontWeight: "900",
+    textAlign: "center"
   },
   locationText: {
     color: colors.textMuted,
