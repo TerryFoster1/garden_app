@@ -14,13 +14,31 @@ If the provider or key is missing, the app may use local demo identification, bu
 
 - The selected/captured photo preview matches the actual plant photo.
 - Result source says `PlantNet suggestions` for real API results.
-- Development status shows provider used, API key detected, image URI type, response status, candidate count, and fallback state.
 - Candidates show confidence percentages.
 - Candidates show common name and scientific name when available.
 - Low-confidence results show: `We're not confident. Try another photo or search manually.`
 - `None of these` opens manual search.
 - Manual search can find and select plants from the local plant index.
+- Tapping a manual search result visibly highlights the selected row.
+- `Confirm match` changes to the selected plant name and advances to the location/stage step.
 - No basil/oregano/tomato local demo result appears unless the UI clearly labels local demo identification.
+
+## Broken-Flow Regression Test
+
+Use this whenever Add Plant changes:
+
+1. Start Add Plant.
+2. Take or upload an indoor snake plant photo.
+3. If PlantNet does not return a good snake plant candidate, tap `None of these`.
+4. Search `snake plant`.
+5. Tap `Snake Plant`.
+6. Confirm the selected row is highlighted and the button says `Confirm Snake Plant`.
+7. Tap `Confirm Snake Plant`.
+8. Confirm the flow advances to the location/stage step.
+9. Select a location and stage.
+10. Tap `Add to my garden`.
+
+Expected result: a Snake Plant instance is created, the starting photo is attached if one was provided, and the user never gets stuck on the identification screen.
 
 ## Test Matrix
 
@@ -32,6 +50,8 @@ Expected:
 - Plausible candidates include snake plant, Dracaena/Sansevieria, or a closely related houseplant.
 - If PlantNet is uncertain, the screen shows low-confidence language.
 - Manual search for `snake plant` returns `Snake Plant / Dracaena trifasciata / Sansevieria trifasciata` style naming through the local plant index.
+- Tapping the manual `Snake Plant` result highlights it and enables `Confirm Snake Plant`.
+- Confirming advances to location and plant stage.
 - Basil or oregano should not appear unless the result is clearly labelled local demo identification.
 
 ### Basil

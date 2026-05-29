@@ -8,12 +8,13 @@ type PrimaryButtonProps = {
   onPress: () => void;
   icon?: ReactNode;
   tone?: "primary" | "sun" | "quiet";
+  disabled?: boolean;
   style?: ViewStyle;
 };
 
-export function PrimaryButton({ label, onPress, icon, tone = "primary", style }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, icon, tone = "primary", disabled = false, style }: PrimaryButtonProps) {
   return (
-    <TouchableOpacity accessibilityRole="button" style={[styles.button, styles[tone], style]} onPress={onPress}>
+    <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} style={[styles.button, styles[tone], disabled && styles.disabled, style]} onPress={onPress}>
       {icon}
       <Text style={[styles.label, tone !== "primary" && styles.darkLabel]}>{label}</Text>
     </TouchableOpacity>
@@ -38,6 +39,9 @@ const styles = StyleSheet.create({
   },
   quiet: {
     backgroundColor: colors.surfaceWarm
+  },
+  disabled: {
+    opacity: 0.52
   },
   label: {
     color: colors.white,
