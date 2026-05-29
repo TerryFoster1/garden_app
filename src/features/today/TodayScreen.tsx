@@ -3,6 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { CareTask, CareTaskType, GardenHomeModel, PlantInstance, PlantPhoto, PlantSpecies } from "../../domain";
+import { getPruningGuidance, hasRecentPruningActivity } from "../../services/pruningGuidance";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type TodayScreenProps = {
@@ -15,9 +16,10 @@ type TodayScreenProps = {
   onOpenGarden: () => void;
   onCompleteTask: (taskId: string) => void;
   onSnoozeTask: (taskId: string) => void;
+  onLogPruningAttention: (plantId: string, note: string) => void;
 };
 
-type AttentionKind = "water" | "skip-water" | "photo" | "light" | "feed" | "harvest" | "diagnose" | "weather";
+type AttentionKind = "water" | "skip-water" | "photo" | "light" | "feed" | "harvest" | "diagnose" | "weather" | "prune";
 
 type PlantQueueEntry = {
   plant: PlantInstance;
@@ -34,7 +36,8 @@ const reasonIcons: Record<AttentionKind, keyof typeof Ionicons.glyphMap> = {
   feed: "nutrition-outline",
   harvest: "basket-outline",
   diagnose: "warning-outline",
-  weather: "partly-sunny-outline"
+  weather: "partly-sunny-outline",
+  prune: "cut-outline"
 };
 
 const priorityWeight: Record<CareTask["priority"], number> = {
@@ -44,7 +47,7 @@ const priorityWeight: Record<CareTask["priority"], number> = {
   low: 3
 };
 
-export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCreateGarden, onLoadDemoGarden, onOpenGarden, onCompleteTask, onSnoozeTask }: TodayScreenProps) {
+export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlant, onCreateGarden, onLoadDemoGarden, onOpenGarden, onCompleteTask, onSnoozeTask, onLogPruningAttention }: TodayScreenProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [dismissedPlantIds, setDismissedPlantIds] = useState<string[]>([]);
 
@@ -62,11 +65,15 @@ export function TodayScreen({ model, onOpenWeatherAlerts, onOpenPlant, onAddPlan
   }
 
   function completePlantAttention(entry: PlantQueueEntry) {
+    const pruningReasons = entry.reasons.filter((reason) => reason.kind === "prune");
     entry.reasons.forEach((reason) => {
       if (reason.taskId) {
         onCompleteTask(reason.taskId);
       }
     });
+    if (pruningReasons.length > 0) {
+      onLogPruningAttention(entry.plant.id, pruningReasons.map((reason) => reason.detail).join(" "));
+    }
     setDismissedPlantIds((current) => [...new Set([...current, entry.plant.id])]);
     setActiveIndex((current) => Math.min(current, Math.max(queue.length - 2, 0)));
   }
@@ -244,6 +251,16 @@ function buildPlantQueue(model: GardenHomeModel): PlantQueueEntry[] {
         });
       }
 
+      const pruningGuidance = hasRecentPruningActivity(model.tasks, plant.id) ? null : getPruningGuidance(plant, species, latestPhoto);
+      if (pruningGuidance) {
+        reasons.push({
+          kind: "prune",
+          label: pruningGuidance.title,
+          detail: pruningGuidance.detail,
+          priority: pruningGuidance.priority
+        });
+      }
+
       return {
         plant,
         species,
@@ -274,6 +291,9 @@ function taskTypeToAttentionKind(type: CareTaskType): AttentionKind {
   }
   if (type === "harvest") {
     return "harvest";
+  }
+  if (type === "pruning" || type === "deadheading") {
+    return "prune";
   }
   if (type === "shade" || type === "heat-stress") {
     return "light";

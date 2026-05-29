@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
@@ -9,6 +9,7 @@ import { CareTask, GardenBed, GardenHomeModel, PlantInstance, PlantPhoto, PlantS
 import { getPlantKnowledge } from "../../data/plantKnowledge";
 import { getDaysUntilHarvest, getPlantPlanMetrics } from "../../services/gardenPlanningRules";
 import { getLatestPlantPhoto, getPlantPhotos } from "../../services/plantPhotos";
+import { getPruningGuidance, getPruningTermsInText, hasRecentPruningActivity, pruningTermExplainers, PruningGuidance } from "../../services/pruningGuidance";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type PlantDetailScreenProps = {
@@ -21,12 +22,13 @@ type PlantDetailScreenProps = {
   onRenamePlant: (plantId: string, displayName: string) => void;
   onMarkWatered: (plantId: string) => void;
   onHarvestPlant: (plantId: string) => void;
+  onPruned: (plantId: string, note: string) => void;
   onAddPhoto: (plantId: string, uri: string, purpose?: PlantPhoto["purpose"], note?: string) => void;
 };
 
 type KnowledgeKey = "care" | "companions" | "pests" | "propagation" | "seed" | "harvest" | "guide";
 
-export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant, onRenamePlant, onMarkWatered, onHarvestPlant, onAddPhoto }: PlantDetailScreenProps) {
+export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemovePlant, onScanPlant, onRenamePlant, onMarkWatered, onHarvestPlant, onPruned, onAddPhoto }: PlantDetailScreenProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [displayName, setDisplayName] = useState(plant.nickname);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
@@ -49,6 +51,7 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
   const daysUntilHarvest = getDaysUntilHarvest(plant, species);
   const photoHistory = getPlantPhotos(model, plant.id);
   const latestPhoto = getLatestPlantPhoto(model, plant);
+  const pruningGuidance = hasRecentPruningActivity(model.tasks, plant.id) ? null : getPruningGuidance(plant, species, latestPhoto);
   const status = getPlantStatus(plant, tasks, daysUntilHarvest);
   const recentEvents = useMemo(() => buildRecentEvents(plant, photoHistory, tasks), [plant, photoHistory, tasks]);
 
@@ -118,6 +121,8 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
         onDiagnose={onScanPlant}
         onUpdatePhoto={() => addPhoto("camera")}
         onHarvest={() => onHarvestPlant(plant.id)}
+        onPruned={() => onPruned(plant.id, pruningGuidance?.detail ?? "Pruning check completed. Take a quick photo after trimming if the shape changed.")}
+        showPruning={Boolean(pruningGuidance)}
         onMove={onMovePlant}
         onRename={isRenaming ? saveDisplayName : () => setIsRenaming(true)}
         onRemove={onRemovePlant}
@@ -127,6 +132,7 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
 
       <CurrentPlantTasks
         tasks={tasks}
+        pruningGuidance={pruningGuidance}
         expandedTaskId={expandedTaskId}
         onToggleWhy={(taskId) => setExpandedTaskId((current) => current === taskId ? null : taskId)}
       />
@@ -190,10 +196,11 @@ export function PlantDetailScreen({ plant, model, onBack, onMovePlant, onRemoveP
         />
         <ExpandableKnowledgeBlock
           title="Pruning + Harvest"
-          icon="basket-outline"
+          icon="cut-outline"
           expanded={expandedSections.harvest}
           onToggle={() => toggleSection("harvest")}
-          text={knowledge.pruningHarvestNotes ?? metrics.harvestWindow ?? "Harvest and pruning guidance will improve with plant knowledge and photo history."}
+          text={pruningGuidance ? `${pruningGuidance.detail} ${knowledge.pruningHarvestNotes ?? metrics.harvestWindow ?? ""}`.trim() : knowledge.pruningHarvestNotes ?? metrics.harvestWindow ?? "Harvest and pruning guidance will improve with plant knowledge and photo history."}
+          highlightTerms
         />
         <ExpandableKnowledgeBlock
           title="Full Plant Guide"
@@ -269,6 +276,8 @@ function QuickActions({
   onDiagnose,
   onUpdatePhoto,
   onHarvest,
+  onPruned,
+  showPruning,
   onMove,
   onRename,
   onRemove
@@ -280,6 +289,8 @@ function QuickActions({
   onDiagnose: () => void;
   onUpdatePhoto: () => void;
   onHarvest: () => void;
+  onPruned: () => void;
+  showPruning: boolean;
   onMove: () => void;
   onRename: () => void;
   onRemove: () => void;
@@ -288,6 +299,7 @@ function QuickActions({
     { label: "Watered", icon: "water-outline" as const, onPress: onWatered, hidden: isReferencePlant },
     { label: "Diagnose", icon: "medkit-outline" as const, onPress: onDiagnose, hidden: false },
     { label: "Photo", icon: "camera-outline" as const, onPress: onUpdatePhoto, hidden: isReferencePlant },
+    { label: "Pruned", icon: "cut-outline" as const, onPress: onPruned, hidden: isReferencePlant || !showPruning },
     { label: "Harvest", icon: "basket-outline" as const, onPress: onHarvest, hidden: isReferencePlant || !edible },
     { label: "Move", icon: "swap-horizontal-outline" as const, onPress: onMove, hidden: isReferencePlant },
     { label: isRenaming ? "Save" : "Rename", icon: "create-outline" as const, onPress: onRename, hidden: isReferencePlant },
@@ -306,22 +318,33 @@ function QuickActions({
   );
 }
 
-function CurrentPlantTasks({ tasks, expandedTaskId, onToggleWhy }: { tasks: CareTask[]; expandedTaskId: string | null; onToggleWhy: (taskId: string) => void }) {
+function CurrentPlantTasks({ tasks, pruningGuidance, expandedTaskId, onToggleWhy }: { tasks: CareTask[]; pruningGuidance: PruningGuidance | null; expandedTaskId: string | null; onToggleWhy: (taskId: string) => void }) {
   const visibleTasks = tasks.slice(0, 3);
   return (
     <View style={styles.statusPanel}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Right now</Text>
-        <Text style={styles.sectionMeta}>{tasks.length} open</Text>
+        <Text style={styles.sectionMeta}>{tasks.length + (pruningGuidance ? 1 : 0)} open</Text>
       </View>
+      {pruningGuidance ? (
+        <View style={styles.pruningCoach}>
+          <View style={styles.pruningIcon}>
+            <Ionicons name="cut-outline" size={18} color={colors.leafDeep} />
+          </View>
+          <View style={styles.pruningCopy}>
+            <Text style={styles.pruningTitle}>{pruningGuidance.title}</Text>
+            <PruningTermText text={pruningGuidance.detail} style={styles.pruningText} />
+          </View>
+        </View>
+      ) : null}
       {visibleTasks.length > 0 ? visibleTasks.map((task) => (
         <TaskLine key={task.id} task={task} expanded={expandedTaskId === task.id} onToggleWhy={() => onToggleWhy(task.id)} />
-      )) : (
+      )) : !pruningGuidance ? (
         <View style={styles.emptyTask}>
           <Ionicons name="checkmark-circle-outline" size={22} color={colors.leafDeep} />
           <Text style={styles.emptyText}>No immediate tasks for this plant.</Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -384,7 +407,8 @@ function ExpandableKnowledgeBlock({
   rows = [],
   chips = [],
   text,
-  empty
+  empty,
+  highlightTerms = false
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -394,6 +418,7 @@ function ExpandableKnowledgeBlock({
   chips?: string[];
   text?: string;
   empty?: string;
+  highlightTerms?: boolean;
 }) {
   return (
     <View style={styles.expandable}>
@@ -417,7 +442,7 @@ function ExpandableKnowledgeBlock({
               {chips.map((chip) => <View key={chip} style={styles.chip}><Text style={styles.chipText}>{chip}</Text></View>)}
             </View>
           ) : null}
-          {text ? <Text style={styles.infoText}>{text}</Text> : null}
+          {text ? (highlightTerms ? <PruningTermText text={text} style={styles.infoText} /> : <Text style={styles.infoText}>{text}</Text>) : null}
           {!rows.length && !chips.length && !text ? <Text style={styles.infoText}>{empty ?? "No details yet."}</Text> : null}
         </View>
       ) : null}
@@ -433,7 +458,11 @@ function TaskLine({ task, expanded, onToggleWhy }: { task: CareTask; expanded: b
         <View style={[styles.taskDot, urgent && styles.hotDot]} />
         <View style={styles.taskCopy}>
           <Text style={styles.taskTitle}>{task.title}</Text>
-          <Text numberOfLines={expanded ? 3 : 1} style={styles.taskReason}>{task.reason}</Text>
+          {expanded || getPruningTermsInText(task.reason).length > 0 ? (
+            <PruningTermText text={task.reason} style={styles.taskReason} numberOfLines={expanded ? 3 : 1} />
+          ) : (
+            <Text numberOfLines={1} style={styles.taskReason}>{task.reason}</Text>
+          )}
         </View>
         <View style={styles.taskSide}>
           <Text style={[styles.taskPriority, urgent && styles.taskPriorityHot]}>{task.priority}</Text>
@@ -450,6 +479,41 @@ function TaskLine({ task, expanded, onToggleWhy }: { task: CareTask; expanded: b
       ) : null}
     </View>
   );
+}
+
+function PruningTermText({ text, style, numberOfLines }: { text: string; style: object; numberOfLines?: number }) {
+  const terms = getPruningTermsInText(text);
+  if (terms.length === 0) {
+    return <Text numberOfLines={numberOfLines} style={style}>{text}</Text>;
+  }
+
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+  const parts = text.split(pattern).filter(Boolean);
+  return (
+    <Text numberOfLines={numberOfLines} style={style}>
+      {parts.map((part, index) => {
+        const term = terms.find((item) => item.toLowerCase() === part.toLowerCase());
+        if (!term) {
+          return <Text key={`${part}-${index}`}>{part}</Text>;
+        }
+
+        return (
+          <Text key={`${part}-${index}`} style={styles.termHighlight} onPress={() => showTermExplainer(term)}>
+            {part}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
+
+function showTermExplainer(term: keyof typeof pruningTermExplainers) {
+  const explainer = pruningTermExplainers[term];
+  Alert.alert(explainer.title, `${explainer.summary}\n\nWhere to look: ${explainer.where}\n\nSafe move: ${explainer.safeAction}`);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getPlantStatus(plant: PlantInstance, tasks: CareTask[], daysUntilHarvest?: number) {
@@ -776,6 +840,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm
+  },
+  pruningCoach: {
+    minHeight: 78,
+    borderRadius: 20,
+    backgroundColor: "#eef6e9",
+    borderWidth: 1,
+    borderColor: "#d7e7d1",
+    padding: spacing.md,
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  pruningIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  pruningCopy: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  pruningTitle: {
+    color: colors.leafDeep,
+    fontSize: typography.small,
+    fontWeight: "900"
+  },
+  pruningText: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 18,
+    fontWeight: "800"
+  },
+  termHighlight: {
+    color: colors.leafDeep,
+    fontWeight: "900",
+    textDecorationLine: "underline"
   },
   emptyText: {
     color: colors.textMuted,

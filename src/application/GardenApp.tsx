@@ -663,6 +663,43 @@ export function GardenApp() {
     }));
   }
 
+  function handleLogPruningAttention(plantId: string, note: string) {
+    const plant = model.plantInstances.find((item) => item.id === plantId);
+    if (!plant || plant.id.startsWith("knowledge-")) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    setModel((current) => ({
+      ...current,
+      tasks: [
+        {
+          id: `task-${plantId}-pruned-${Date.now()}`,
+          plantInstanceId: plantId,
+          gardenBedId: plant.bedId,
+          type: "pruning",
+          title: `Pruning check logged for ${plant.nickname}`,
+          dueAt: now,
+          priority: "low",
+          status: "done",
+          reason: note || "Pruning attention completed. A photo update after pruning can help Pattypan track recovery and shape."
+        },
+        ...current.tasks.map((task) => (task.plantInstanceId === plantId && (task.type === "pruning" || task.type === "deadheading") ? { ...task, status: "done" as const } : task))
+      ],
+      growthSnapshots: [
+        {
+          id: `snapshot-${plantId}-pruned-${Date.now()}`,
+          plantInstanceId: plantId,
+          recordedAt: now,
+          stage: plant.stage,
+          note: note || "Pruning attention completed.",
+          source: "manual"
+        },
+        ...(current.growthSnapshots ?? [])
+      ]
+    }));
+  }
+
   function handleAddPlantPhoto(plantId: string, uri: string, purpose: PlantPhoto["purpose"] = "growth-log", note = "Photo update") {
     const plant = model.plantInstances.find((item) => item.id === plantId);
     if (!plant || plant.id.startsWith("knowledge-")) {
@@ -846,6 +883,7 @@ export function GardenApp() {
           onRenamePlant={handleRenamePlant}
           onMarkWatered={handleMarkWatered}
           onHarvestPlant={handleHarvestPlant}
+          onPruned={handleLogPruningAttention}
           onAddPhoto={handleAddPlantPhoto}
         />
       );
@@ -916,6 +954,7 @@ export function GardenApp() {
           onOpenGarden={() => setActiveTab("garden")}
           onCompleteTask={handleCompleteTask}
           onSnoozeTask={handleSnoozeTask}
+          onLogPruningAttention={handleLogPruningAttention}
         />
       );
     }

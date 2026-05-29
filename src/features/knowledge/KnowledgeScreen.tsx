@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { PlantSpecies } from "../../domain";
 import { aiRecommendationProvider, AiAssistantResponse } from "../../services/aiRecommendationProvider";
+import { getPruningTermsInText, pruningTermExplainers, PruningTermKey } from "../../services/pruningGuidance";
 import { colors, radii, spacing, typography } from "../../theme/tokens";
 
 type KnowledgeScreenProps = {
@@ -15,7 +16,7 @@ type KnowledgeScreenProps = {
 const topics = [
   { label: "Pests & Bugs", icon: "bug-outline", prompts: ["Aphids on peppers", "Cucumber beetles", "Natural pest control"] },
   { label: "Diseases", icon: "leaf-outline", prompts: ["Yellow leaves", "Powdery mildew", "Tomato blight"] },
-  { label: "Plant Care", icon: "water-outline", prompts: ["Watering in heat", "Fertilizing herbs", "Pruning tomatoes"] },
+  { label: "Plant Care", icon: "water-outline", prompts: ["Pruning tomatoes", "Pinch back basil", "What are suckers?"] },
   { label: "Propagation", icon: "git-branch-outline", prompts: ["Root rosemary cuttings", "Divide chives", "Succulent offsets"] },
   { label: "Growing From Seed", icon: "file-tray-full-outline", prompts: ["Start basil seeds", "Harden off seedlings", "When to transplant"] }
 ] as const;
@@ -28,6 +29,13 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
   const [answer, setAnswer] = useState<AiAssistantResponse | null>(null);
   const [isAsking, setIsAsking] = useState(false);
   const featuredSpecies = species.slice(0, 4);
+  const termMatches = useMemo(() => {
+    const normalized = query.trim();
+    if (normalized.length < 2) {
+      return [];
+    }
+    return getPruningTermsInText(normalized).slice(0, 4);
+  }, [query]);
   const filteredSpecies = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (normalized.length < 2) {
@@ -93,6 +101,16 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
             </TouchableOpacity>
           ))}
         </View>
+        {activeTopic.label === "Plant Care" || activeTopic.label === "Diseases" || activeTopic.label === "Growing From Seed" ? (
+          <View style={styles.termGrid}>
+            {getTopicTerms(activeTopic.label).map((term) => (
+              <TouchableOpacity key={term} accessibilityRole="button" style={styles.termChip} onPress={() => showTermExplainer(term)}>
+                <Ionicons name={term === "suckers" || term === "pinch back" || term === "deadhead" ? "cut-outline" : "information-circle-outline"} size={16} color={colors.leafDeep} />
+                <Text style={styles.termChipText}>{term}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
         {answer ? <AnswerCard answer={answer} /> : null}
       </View>
     );
@@ -122,6 +140,15 @@ export function KnowledgeScreen({ species, onOpenPlant, onDiagnoseByPhoto }: Kno
             <TouchableOpacity key={item.id} accessibilityRole="button" style={styles.resultRow} onPress={() => onOpenPlant(item.id)}>
               <Text style={styles.resultTitle}>{item.commonName}</Text>
               <Text style={styles.resultMeta}>{item.scientificName ?? item.family}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : termMatches.length > 0 ? (
+        <View style={styles.searchResults}>
+          {termMatches.map((term) => (
+            <TouchableOpacity key={term} accessibilityRole="button" style={styles.resultRow} onPress={() => showTermExplainer(term)}>
+              <Text style={styles.resultTitle}>{pruningTermExplainers[term].title}</Text>
+              <Text style={styles.resultMeta}>{pruningTermExplainers[term].summary}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -230,6 +257,24 @@ function AnswerCard({ answer }: { answer: AiAssistantResponse }) {
       ))}
     </View>
   );
+}
+
+function getTopicTerms(topicLabel: string): PruningTermKey[] {
+  if (topicLabel === "Plant Care") {
+    return ["suckers", "pinch back", "deadhead", "side shoot", "node"];
+  }
+  if (topicLabel === "Diseases") {
+    return ["powdery mildew", "blossom end rot"];
+  }
+  if (topicLabel === "Growing From Seed") {
+    return ["true leaves", "hardening off", "transplant shock"];
+  }
+  return [];
+}
+
+function showTermExplainer(term: PruningTermKey) {
+  const explainer = pruningTermExplainers[term];
+  Alert.alert(explainer.title, `${explainer.summary}\n\nWhere to look: ${explainer.where}\n\nSafe move: ${explainer.safeAction}`);
 }
 
 const styles = StyleSheet.create({
@@ -405,6 +450,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: spacing.sm
   },
+  termGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm
+  },
   promptChip: {
     minHeight: 44,
     borderRadius: radii.pill,
@@ -416,6 +466,22 @@ const styles = StyleSheet.create({
   promptText: {
     color: colors.leafDeep,
     fontSize: typography.small,
+    fontWeight: "900"
+  },
+  termChip: {
+    minHeight: 40,
+    borderRadius: radii.pill,
+    backgroundColor: "#eef6e9",
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs
+  },
+  termChipText: {
+    color: colors.leafDeep,
+    fontSize: typography.caption,
     fontWeight: "900"
   },
   searchResults: {
